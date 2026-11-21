@@ -102,13 +102,13 @@ box(1.5,.1,2,0xf4a261,0,2.45,-.15,true,moto);
 const hl=new T.Mesh(new T.SphereGeometry(.12,8,8),new T.MeshBasicMaterial({color:0xffee88}));hl.position.set(0,1,.75);moto.add(hl);
 
 // Estado y controles
-let yaw=0,pitch=.38,vx=0,vz=0,rot=0,riding=false,t=0;
+let yaw=0,pitch=.38,vx=0,vz=0,rot=0,riding=false,t=0,spd=0,steerS=0,lastDrag=0;
 const keys={};let run=false,jx=0,jy=0;
 addEventListener('keydown',e=>{keys[e.code]=1;if(e.code==='KeyE')toggle();if(e.code==='KeyQ')useAbility();if(e.code==='KeyR')$('roles').style.display='flex'});
 addEventListener('keyup',e=>keys[e.code]=0);
 let drag=null;const cvs=renderer.domElement;
 cvs.addEventListener('pointerdown',e=>{drag={id:e.pointerId,x:e.clientX,y:e.clientY}});
-addEventListener('pointermove',e=>{if(drag&&e.pointerId===drag.id){yaw-=(e.clientX-drag.x)*.006;pitch=Math.min(1.2,Math.max(.08,pitch+(e.clientY-drag.y)*.005));drag.x=e.clientX;drag.y=e.clientY}});
+addEventListener('pointermove',e=>{if(drag&&e.pointerId===drag.id){lastDrag=performance.now();yaw-=(e.clientX-drag.x)*.006;pitch=Math.min(1.2,Math.max(.08,pitch+(e.clientY-drag.y)*.005));drag.x=e.clientX;drag.y=e.clientY}});
 addEventListener('pointerup',e=>{if(drag&&e.pointerId===drag.id)drag=null});
 const stick=$('stick'),knob=$('knob');let sid=null;
 function sv(e){const r=stick.getBoundingClientRect();let dx=e.clientX-r.left-60,dy=e.clientY-r.top-60;const m=Math.hypot(dx,dy);if(m>50){dx*=50/m;dy*=50/m}
@@ -121,10 +121,19 @@ $('bE').addEventListener('click',toggle);
 $('bR').addEventListener('click',()=>{run=!run;$('bR').style.opacity=run?1:.7});
 const near=()=>Math.hypot(player.g.position.x-moto.position.x,player.g.position.z-moto.position.z)<3;
 function toggle(){const p=player.g.position;
- if(riding){riding=false;p.set(moto.position.x+1.6,0,moto.position.z);player.legL.rotation.x=player.legR.rotation.x=0;vx=vz=0}
- else if(near()){riding=true;rot=moto.rotation.y}}
+ if(riding){riding=false;p.set(moto.position.x+1.6,0,moto.position.z);player.legL.rotation.x=player.legR.rotation.x=0;vx=vz=0;spd=0;steerS=0;moto.rotation.z=0}
+ else if(near()){riding=true;rot=moto.rotation.y;spd=0;steerS=0;vx=vz=0}}
 const lim={x:60,z:76};
-function resolve(p,r){for(const c of colliders){const cx=Math.max(c.x0,Math.min(p.x,c.x1)),cz=Math.max(c.z0,Math.min(p.z,c.z1));
+function polyPush(p,r,P){let best=1e9,bx=0,bz=0,ins=false;
+ for(let i=0,n=P.length;i<n;i+=2){const q=(i+2)%n,x1=P[i],z1=P[i+1],x2=P[q],z2=P[q+1],dx=x2-x1,dz=z2-z1,l2=dx*dx+dz*dz;
+  let u=l2?((p.x-x1)*dx+(p.z-z1)*dz)/l2:0;u=Math.max(0,Math.min(1,u));
+  const cx=x1+dx*u,cz=z1+dz*u,d=(p.x-cx)**2+(p.z-cz)**2;if(d<best){best=d;bx=cx;bz=cz}
+  if((z1>p.z)!==(z2>p.z)&&p.x<(x2-x1)*(p.z-z1)/(z2-z1)+x1)ins=!ins}
+ const d=Math.sqrt(best)||1e-6,ux=(p.x-bx)/d,uz=(p.z-bz)/d;
+ if(ins){p.x=bx-ux*r;p.z=bz-uz*r}else if(d<r){p.x=bx+ux*r;p.z=bz+uz*r}}
+function resolve(p,r){for(const c of colliders){
+ if(c.poly){if(p.x<c.x0-r||p.x>c.x1+r||p.z<c.z0-r||p.z>c.z1+r)continue;polyPush(p,r,c.poly);continue}
+ const cx=Math.max(c.x0,Math.min(p.x,c.x1)),cz=Math.max(c.z0,Math.min(p.z,c.z1));
  let dx=p.x-cx,dz=p.z-cz,d=Math.hypot(dx,dz);
  if(d<r){if(d<.001){dx=1;dz=0;d=1}p.x=cx+dx/d*r;p.z=cz+dz/d*r}}
  p.x=Math.max(-lim.x,Math.min(lim.x,p.x));p.z=Math.max(-lim.z,Math.min(lim.z,p.z))}
@@ -168,6 +177,7 @@ function roleTick(dt){if(!role)return;
 let world=null,wt=0;
 loadWorld(T,scene,colliders).then(w=>{if(!w)return;world=w;
  scene.children.slice(legacyStart+1,legacyEnd).forEach(o=>o.visible=false);
+ ground.material.map=null;ground.material.color.set(0x8f8a7e);ground.material.needsUpdate=true;
  colliders.length=0;lim.x=w.lim.x;lim.z=w.lim.z;
  npcs.forEach(n=>{n.g.visible=false;n.sp=0});
  player.g.position.set(w.spawn[0],0,w.spawn[1]);moto.position.set(w.spawn[0]+2,0,w.spawn[1]);
@@ -180,22 +190,40 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
  const mag=role?Math.min(1,Math.hypot(ix,iz)):0;
  const mx=(-Math.sin(yaw))*(-iz)+Math.cos(yaw)*ix,mz=(-Math.cos(yaw))*(-iz)+(-Math.sin(yaw))*ix;
  const ml=Math.hypot(mx,mz)||1;
- const speed=((abT>0&&role&&role.id==='cond')?1.7:1)*(riding?15:(keys.ShiftLeft||keys.ShiftRight||run)?8.5:4.6);
- const k=1-Math.exp(-(riding?2.5:10)*dt);
- vx+=(mx/ml*mag*speed-vx)*k;vz+=(mz/ml*mag*speed-vz)*k;
- const obj=riding?moto.position:player.g.position;
- obj.x+=vx*dt;obj.z+=vz*dt;resolve(obj,riding?.9:.45);
+ const turbo=(abT>0&&role&&role.id==='cond')?1.5:1,obj=riding?moto.position:player.g.position,en=role?1:0;
+ if(riding){
+  const thr=en*Math.max(-1,Math.min(1,-iz)),st=en*Math.max(-1,Math.min(1,ix)),vmax=22*turbo*((keys.ShiftLeft||keys.ShiftRight)?1.3:1);
+  if(thr>0)spd+=(spd<vmax?16*turbo:0)*thr*dt;
+  else if(thr<0)spd+=(spd>.5?-32:-12)*(-thr)*dt;
+  const dr=(thr===0?5:1.2)*dt+.003*spd*spd*dt;
+  spd-=Math.sign(spd)*Math.min(Math.abs(spd),dr);
+  if(keys.Space)spd*=Math.exp(-1.2*dt);
+  spd=Math.max(-7,Math.min(vmax*1.1,spd));
+  steerS+=(st-steerS)*(1-Math.exp(-7*dt));
+  rot-=steerS*Math.min(1,Math.abs(spd)/5)*Math.sign(spd)*(2.6/(1+Math.abs(spd)*.06))*dt;
+  const gr=1-Math.exp(-(keys.Space?1.6:8)*dt);
+  vx+=(Math.sin(rot)*spd-vx)*gr;vz+=(Math.cos(rot)*spd-vz)*gr;
+ }else{
+  const speed=turbo*((keys.ShiftLeft||keys.ShiftRight||run)?8.5:4.6),k=1-Math.exp(-10*dt);
+  vx+=(mx/ml*mag*speed-vx)*k;vz+=(mz/ml*mag*speed-vz)*k;
+ }
+ const bx=obj.x+vx*dt,bz=obj.z+vz*dt;obj.x=bx;obj.z=bz;resolve(obj,riding?.7:.45);
+ const cor=Math.hypot(obj.x-bx,obj.z-bz);
+ if(riding&&cor>.001){spd*=Math.max(.15,1-cor*5);vx*=.85;vz*=.85}
  const sp=Math.hypot(vx,vz);
- if(sp>.4){rot+=angD(rot,Math.atan2(vx,vz))*Math.min(1,dt*(riding?5:12))}
- if(riding){moto.rotation.y=rot;player.g.position.set(moto.position.x,.3,moto.position.z);player.g.rotation.y=rot;
+ if(!riding&&sp>.4)rot+=angD(rot,Math.atan2(vx,vz))*Math.min(1,dt*12);
+ if(riding){player.g.rotation.order=moto.rotation.order='YXZ';moto.rotation.y=rot;moto.rotation.z=steerS*Math.min(1,Math.abs(spd)/12)*.35;
+  player.g.position.set(moto.position.x,.3,moto.position.z);player.g.rotation.y=rot;player.g.rotation.z=moto.rotation.z;
   player.legL.rotation.x=player.legR.rotation.x=-1.2;player.armL.rotation.x=player.armR.rotation.x=-1.1}
- else{player.g.rotation.y=rot;swing(player,Math.sin(t*(sp>6?13:9))*Math.min(1,sp/5)*.9)}
+ else{player.g.rotation.y=rot;player.g.rotation.z=0;swing(player,Math.sin(t*(sp>6?13:9))*Math.min(1,sp/5)*.9)}
  npcs.forEach(n=>{const fr=abT>0&&role&&role.id==='inf'&&n.g.position.distanceTo(player.g.position)<25;if(!fr)n.g.position.z+=n.dir*n.sp*dt;if(Math.abs(n.g.position.z)>70)n.dir*=-1;n.g.rotation.y=n.dir>0?0:Math.PI;swing(n,fr?0:Math.sin((t+n.t)*8)*.6)});
+ if(role&&performance.now()-lastDrag>1200&&(riding?Math.abs(spd)>1:(sp>.8&&iz<.5)))yaw+=angD(yaw,rot+Math.PI)*(1-Math.exp(-(riding?3:1.2)*dt));
+ cam.fov+=((60+(riding?Math.min(18,Math.abs(spd)*.7):0))-cam.fov)*(1-Math.exp(-4*dt));cam.updateProjectionMatrix();
  const pp=player.g.position,dist=riding?9:6.5;
  const tx=pp.x+Math.sin(yaw)*Math.cos(pitch)*dist,ty=pp.y+1.7+Math.sin(pitch)*dist,tz=pp.z+Math.cos(yaw)*Math.cos(pitch)*dist;
  cam.position.lerp(new T.Vector3(tx,ty,tz),1-Math.exp(-12*dt));cam.lookAt(pp.x,pp.y+1.6,pp.z);
  sun.position.set(pp.x+30,50,pp.z+20);sun.target.position.copy(pp);
- const msg=riding?'E para bajar del motoconcho':(near()?'E para subir al motoconcho':'');
+ const msg=riding?'E para bajar · '+Math.round(Math.abs(spd)*3.6)+' km/h':(near()?'E para subir al motoconcho':'');
  roleTick(dt);if(world&&(wt+=dt)>.4){wt=0;world.update(pp.x,pp.z)}hint.style.display=msg?'block':'none';hint.textContent=msg;$('bE').textContent=riding?'Bajar':'Subir';
  renderer.render(scene,cam)}
 loop();
