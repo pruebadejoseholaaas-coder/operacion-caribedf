@@ -82,12 +82,13 @@ function person(shirt,pants,skin,hair,mask){
  if(mask){L(.44,.48,.08,0xf5f0e6,0,1.95,.24);L(.1,.07,.02,0x111111,-.1,2.0,.29);L(.1,.07,.02,0x111111,.1,2.0,.29);L(.3,.05,.02,0xc8372d,0,1.84,.29)}
  return{g,legL,legR,armL,armR}}
 function swing(p,a){p.legL.rotation.x=a;p.legR.rotation.x=-a;p.armL.rotation.x=-a;p.armR.rotation.x=a}
-const player=person(0xc8372d,0xc8372d,0xc68a5e,0x111111,true);
+let player=person(0xc8372d,0xc8372d,0xc68a5e,0x111111,true);
 player.g.position.set(0,0,32);scene.add(player.g);
 const skins=[0xc68a5e,0x8d5a3b,0xe0b08a,0x5e3a24],sh2=[0xffffff,0x2a9d8f,0xf4a261,0x6ec1e4,0xd97aa6,0xf2c14e];
 const npcs=[];for(let i=0;i<16;i++){const p=person(sh2[i%6],0x2b3a55,skins[i%4],0x1a1a1a,false);
  const lane=(Math.random()<.5?-1:1)*(2.4+Math.random()*3);p.g.position.set(lane,0,-60+Math.random()*120);
- p.dir=Math.random()<.5?-1:1;p.sp=1.3+Math.random()*1.2;p.t=Math.random()*9;scene.add(p.g);npcs.push(p)}
+ p.dir=Math.random()<.5?-1:1;p.sp=1.3+Math.random()*1.2;p.t=Math.random()*9;scene.add(p.g);npcs.push(p);
+ p.mk=new T.Mesh(new T.SphereGeometry(.2,8,8),new T.MeshBasicMaterial({color:0x5fe0ff,depthTest:false}));p.mk.position.y=2.7;p.mk.renderOrder=9;p.mk.visible=false;p.g.add(p.mk)}
 
 // Motoconcho
 const moto=new T.Group();scene.add(moto);moto.position.set(3,0,27);
@@ -100,7 +101,7 @@ const hl=new T.Mesh(new T.SphereGeometry(.12,8,8),new T.MeshBasicMaterial({color
 // Estado y controles
 let yaw=0,pitch=.38,vx=0,vz=0,rot=0,riding=false,t=0;
 const keys={};let run=false,jx=0,jy=0;
-addEventListener('keydown',e=>{keys[e.code]=1;if(e.code==='KeyE')toggle()});
+addEventListener('keydown',e=>{keys[e.code]=1;if(e.code==='KeyE')toggle();if(e.code==='KeyQ')useAbility();if(e.code==='KeyR')$('roles').style.display='flex'});
 addEventListener('keyup',e=>keys[e.code]=0);
 let drag=null;const cvs=renderer.domElement;
 cvs.addEventListener('pointerdown',e=>{drag={id:e.pointerId,x:e.clientX,y:e.clientY}});
@@ -127,14 +128,46 @@ const angD=(a,b)=>{let d=b-a;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Ma
 function resize(){renderer.setSize(innerWidth,innerHeight);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()}
 addEventListener('resize',resize);resize();
 
+// Roles
+const ROLES=[
+{id:'prog',name:'Programador',ic:'💻',col:0x2ec4d6,cd:14,dur:6,ab:'Hackear cámaras',desc:'Controla la tecnología del atraco: ve a todos los peatones por las cámaras de la ciudad y recibe la radio y las interferencias.'},
+{id:'cond',name:'Conductor',ic:'🏍️',col:0xf2c14e,cd:10,dur:3,ab:'Turbo',desc:'Rey de las calles. Su turbo le da un 70% más de velocidad durante unos segundos.'},
+{id:'plan',name:'Planificador',ic:'🗺️',col:0x4361ee,cd:12,dur:8,ab:'Plano del golpe',desc:'La mente del plan. Marca el objetivo y calcula la distancia hasta la Casa de Moneda.'},
+{id:'inf',name:'Infiltrado',ic:'🎭',col:0xc8372d,cd:12,dur:4,ab:'Distracción',desc:'Maestro del engaño. Paraliza a la gente cercana unos segundos con una distracción.'}];
+let role=null,abT=0,cdT=0,feedT=0;
+const rEl=$('roles');
+rEl.querySelector('.cards').innerHTML=ROLES.map((r,i)=>`<button class="card" data-i="${i}" style="--c:#${r.col.toString(16).padStart(6,'0')}"><span class="ic">${r.ic}</span><b>${r.name}</b><small>${r.desc}</small><em>[Q] ${r.ab}</em></button>`).join('');
+rEl.addEventListener('click',e=>{const b=e.target.closest('.card');if(b)pick(ROLES[+b.dataset.i])});
+$('t').addEventListener('click',()=>rEl.style.display='flex');
+$('bQ').addEventListener('click',()=>useAbility());
+const beam=new T.Mesh(new T.CylinderGeometry(.7,.7,80,10,1,true),new T.MeshBasicMaterial({color:0x4361ee,transparent:true,opacity:.45,side:T.DoubleSide}));
+beam.position.set(0,40,-72);beam.visible=false;scene.add(beam);
+const FEED=['Radio: la policía cambió de canal.','Cámara 3 sin señal en la calle principal.','Interferencia detectada… alguien escucha.','Alerta: un dron sobrevuela la plaza.','Mensaje cifrado recibido del Planificador.'];
+function pick(r){const old=player.g.position.clone(),ro=player.g.rotation.y;
+ if(riding){riding=false;old.set(moto.position.x+1.6,0,moto.position.z)}
+ old.y=0;scene.remove(player.g);
+ player=person(r.col,r.col,0xc68a5e,0x111111,true);player.g.position.copy(old);player.g.rotation.y=ro;scene.add(player.g);
+ role=r;abT=0;cdT=0;rEl.style.display='none';
+ $('t').querySelector('small').textContent=r.ic+' '+r.name+' · Zona Colonial';
+ $('feed').innerHTML='';$('feed').style.display=r.id==='prog'?'block':'none';$('ab').style.display='block'}
+function useAbility(){if(!role||abT>0||cdT>0)return;abT=role.dur;cdT=role.cd}
+function roleTick(dt){if(!role)return;
+ abT=Math.max(0,abT-dt);cdT=Math.max(0,cdT-dt);const on=abT>0;
+ npcs.forEach(n=>n.mk.visible=on&&role.id==='prog');beam.visible=on&&role.id==='plan';
+ let s=on?'activo '+Math.ceil(abT)+'s':cdT>0?'recarga '+Math.ceil(cdT)+'s':'¡listo!';
+ if(on&&role.id==='plan')s+=' · Casa de Moneda a '+Math.round(Math.hypot(player.g.position.x,player.g.position.z+79))+' m';
+ $('ab').textContent='[Q] '+role.ab+': '+s;
+ if(role.id==='prog'){feedT-=dt;if(feedT<=0){feedT=5+Math.random()*5;const f=$('feed'),d=document.createElement('div');
+  d.textContent='📡 '+FEED[Math.floor(Math.random()*FEED.length)];f.prepend(d);while(f.children.length>3)f.lastChild.remove()}}}
+
 const clock=new T.Clock(),hint=$('h');
 function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.05);t+=dt;
  let ix=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+jx;
  let iz=(keys.KeyS||keys.ArrowDown?1:0)-(keys.KeyW||keys.ArrowUp?1:0)+jy;
- const mag=Math.min(1,Math.hypot(ix,iz));
+ const mag=role?Math.min(1,Math.hypot(ix,iz)):0;
  const mx=(-Math.sin(yaw))*(-iz)+Math.cos(yaw)*ix,mz=(-Math.cos(yaw))*(-iz)+(-Math.sin(yaw))*ix;
  const ml=Math.hypot(mx,mz)||1;
- const speed=riding?15:(keys.ShiftLeft||keys.ShiftRight||run)?8.5:4.6;
+ const speed=((abT>0&&role&&role.id==='cond')?1.7:1)*(riding?15:(keys.ShiftLeft||keys.ShiftRight||run)?8.5:4.6);
  const k=1-Math.exp(-(riding?2.5:10)*dt);
  vx+=(mx/ml*mag*speed-vx)*k;vz+=(mz/ml*mag*speed-vz)*k;
  const obj=riding?moto.position:player.g.position;
@@ -144,12 +177,12 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
  if(riding){moto.rotation.y=rot;player.g.position.set(moto.position.x,.3,moto.position.z);player.g.rotation.y=rot;
   player.legL.rotation.x=player.legR.rotation.x=-1.2;player.armL.rotation.x=player.armR.rotation.x=-1.1}
  else{player.g.rotation.y=rot;swing(player,Math.sin(t*(sp>6?13:9))*Math.min(1,sp/5)*.9)}
- npcs.forEach(n=>{n.g.position.z+=n.dir*n.sp*dt;if(Math.abs(n.g.position.z)>70)n.dir*=-1;n.g.rotation.y=n.dir>0?0:Math.PI;swing(n,Math.sin((t+n.t)*8)*.6)});
+ npcs.forEach(n=>{const fr=abT>0&&role&&role.id==='inf'&&n.g.position.distanceTo(player.g.position)<25;if(!fr)n.g.position.z+=n.dir*n.sp*dt;if(Math.abs(n.g.position.z)>70)n.dir*=-1;n.g.rotation.y=n.dir>0?0:Math.PI;swing(n,fr?0:Math.sin((t+n.t)*8)*.6)});
  const pp=player.g.position,dist=riding?9:6.5;
  const tx=pp.x+Math.sin(yaw)*Math.cos(pitch)*dist,ty=pp.y+1.7+Math.sin(pitch)*dist,tz=pp.z+Math.cos(yaw)*Math.cos(pitch)*dist;
  cam.position.lerp(new T.Vector3(tx,ty,tz),1-Math.exp(-12*dt));cam.lookAt(pp.x,pp.y+1.6,pp.z);
  sun.position.set(pp.x+30,50,pp.z+20);sun.target.position.copy(pp);
  const msg=riding?'E para bajar del motoconcho':(near()?'E para subir al motoconcho':'');
- hint.style.display=msg?'block':'none';hint.textContent=msg;$('bE').textContent=riding?'Bajar':'Subir';
+ roleTick(dt);hint.style.display=msg?'block':'none';hint.textContent=msg;$('bE').textContent=riding?'Bajar':'Subir';
  renderer.render(scene,cam)}
 loop();
