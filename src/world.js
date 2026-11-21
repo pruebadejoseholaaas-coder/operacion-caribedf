@@ -38,8 +38,8 @@ export async function loadWorld(T, scene, colliders) {
   let m = 0;
   d.r.forEach(f => { add('r', f, f[1]); f[1].forEach(v => m = Math.max(m, Math.abs(v))); });
   d.b.forEach(f => add('b', f, f[2]));
-  d.w.forEach(f => add('w', f, f[0]));
-  d.g.forEach(f => add('g', f, f[0]));
+ d.w.forEach(f => add('w', f, f));
+d.g.forEach(f => add('g', f, f));
 
   const shape = p => { const s = new T.Shape(); for (let i = 0; i < p.length; i += 2) i ? s.lineTo(p[i], -p[i + 1]) : s.moveTo(p[i], -p[i + 1]); return s; };
   const flat = (p, c, y, grp) => {
