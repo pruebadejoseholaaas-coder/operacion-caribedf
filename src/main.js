@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import './style.css';
+import { loadWorld } from './world.js';
 
 const T=THREE,$=id=>document.getElementById(id);
 const renderer=new T.WebGLRenderer({antialias:true});
@@ -16,6 +17,7 @@ function box(w,h,l,c,x,y,z,sh=true,par=scene){const m=new T.Mesh(new T.BoxGeomet
 const colliders=[];
 const col=(x0,x1,z0,z1)=>colliders.push({x0,x1,z0,z1});
 
+const legacyStart=scene.children.length;
 // Suelo adoquinado
 const cv=document.createElement('canvas');cv.width=cv.height=64;const cx=cv.getContext('2d');
 cx.fillStyle='#7d7469';cx.fillRect(0,0,64,64);
@@ -70,6 +72,7 @@ function palm(x,z){const g=new T.Group();g.position.set(x,0,z);scene.add(g);
  for(let i=0;i<7;i++){const a=new T.Group();a.rotation.y=i*Math.PI*2/7;const l=new T.Mesh(new T.BoxGeometry(.5,.06,3.4),mat(0x2f8f3e));l.position.set(0,-.2,1.6);l.rotation.x=.4;l.castShadow=true;a.add(l);top.add(a)}}
 [[-9,8],[9,8],[-9,-8],[9,-8],[-14,0],[14,0],[-3.2,-30],[3.2,30],[-3.2,52],[3.2,-52]].forEach(p=>palm(...p));
 
+const legacyEnd=scene.children.length;
 // Personas
 function person(shirt,pants,skin,hair,mask){
  const g=new T.Group();
@@ -120,10 +123,11 @@ const near=()=>Math.hypot(player.g.position.x-moto.position.x,player.g.position.
 function toggle(){const p=player.g.position;
  if(riding){riding=false;p.set(moto.position.x+1.6,0,moto.position.z);player.legL.rotation.x=player.legR.rotation.x=0;vx=vz=0}
  else if(near()){riding=true;rot=moto.rotation.y}}
+const lim={x:60,z:76};
 function resolve(p,r){for(const c of colliders){const cx=Math.max(c.x0,Math.min(p.x,c.x1)),cz=Math.max(c.z0,Math.min(p.z,c.z1));
  let dx=p.x-cx,dz=p.z-cz,d=Math.hypot(dx,dz);
  if(d<r){if(d<.001){dx=1;dz=0;d=1}p.x=cx+dx/d*r;p.z=cz+dz/d*r}}
- p.x=Math.max(-60,Math.min(60,p.x));p.z=Math.max(-76,Math.min(76,p.z))}
+ p.x=Math.max(-lim.x,Math.min(lim.x,p.x));p.z=Math.max(-lim.z,Math.min(lim.z,p.z))}
 const angD=(a,b)=>{let d=b-a;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;return d};
 function resize(){renderer.setSize(innerWidth,innerHeight);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()}
 addEventListener('resize',resize);resize();
@@ -140,6 +144,7 @@ rEl.querySelector('.cards').innerHTML=ROLES.map((r,i)=>`<button class="card" dat
 rEl.addEventListener('click',e=>{const b=e.target.closest('.card');if(b)pick(ROLES[+b.dataset.i])});
 $('t').addEventListener('click',()=>rEl.style.display='flex');
 $('bQ').addEventListener('click',()=>useAbility());
+const GOAL=new T.Vector3(0,0,-79);
 const beam=new T.Mesh(new T.CylinderGeometry(.7,.7,80,10,1,true),new T.MeshBasicMaterial({color:0x4361ee,transparent:true,opacity:.45,side:T.DoubleSide}));
 beam.position.set(0,40,-72);beam.visible=false;scene.add(beam);
 const FEED=['Radio: la policía cambió de canal.','Cámara 3 sin señal en la calle principal.','Interferencia detectada… alguien escucha.','Alerta: un dron sobrevuela la plaza.','Mensaje cifrado recibido del Planificador.'];
@@ -155,11 +160,19 @@ function roleTick(dt){if(!role)return;
  abT=Math.max(0,abT-dt);cdT=Math.max(0,cdT-dt);const on=abT>0;
  npcs.forEach(n=>n.mk.visible=on&&role.id==='prog');beam.visible=on&&role.id==='plan';
  let s=on?'activo '+Math.ceil(abT)+'s':cdT>0?'recarga '+Math.ceil(cdT)+'s':'¡listo!';
- if(on&&role.id==='plan')s+=' · Casa de Moneda a '+Math.round(Math.hypot(player.g.position.x,player.g.position.z+79))+' m';
+ if(on&&role.id==='plan')s+=' · Objetivo a '+Math.round(Math.hypot(player.g.position.x-GOAL.x,player.g.position.z-GOAL.z))+' m';
  $('ab').textContent='[Q] '+role.ab+': '+s;
  if(role.id==='prog'){feedT-=dt;if(feedT<=0){feedT=5+Math.random()*5;const f=$('feed'),d=document.createElement('div');
   d.textContent='📡 '+FEED[Math.floor(Math.random()*FEED.length)];f.prepend(d);while(f.children.length>3)f.lastChild.remove()}}}
 
+let world=null,wt=0;
+loadWorld(T,scene,colliders).then(w=>{if(!w)return;world=w;
+ scene.children.slice(legacyStart+1,legacyEnd).forEach(o=>o.visible=false);
+ colliders.length=0;lim.x=w.lim.x;lim.z=w.lim.z;
+ npcs.forEach(n=>{n.g.visible=false;n.sp=0});
+ player.g.position.set(w.spawn[0],0,w.spawn[1]);moto.position.set(w.spawn[0]+2,0,w.spawn[1]);
+ GOAL.set(w.goal[0],0,w.goal[1]);beam.position.set(w.goal[0],40,w.goal[1]);
+ w.update(w.spawn[0],w.spawn[1])});
 const clock=new T.Clock(),hint=$('h');
 function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.05);t+=dt;
  let ix=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+jx;
@@ -183,6 +196,6 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
  cam.position.lerp(new T.Vector3(tx,ty,tz),1-Math.exp(-12*dt));cam.lookAt(pp.x,pp.y+1.6,pp.z);
  sun.position.set(pp.x+30,50,pp.z+20);sun.target.position.copy(pp);
  const msg=riding?'E para bajar del motoconcho':(near()?'E para subir al motoconcho':'');
- roleTick(dt);hint.style.display=msg?'block':'none';hint.textContent=msg;$('bE').textContent=riding?'Bajar':'Subir';
+ roleTick(dt);if(world&&(wt+=dt)>.4){wt=0;world.update(pp.x,pp.z)}hint.style.display=msg?'block':'none';hint.textContent=msg;$('bE').textContent=riding?'Bajar':'Subir';
  renderer.render(scene,cam)}
 loop();
