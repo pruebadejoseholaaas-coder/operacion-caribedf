@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Generador de mundo · Operación Caribe</title>
+<style>
+body{font-family:"Trebuchet MS",sans-serif;max-width:560px;margin:24px auto;padding:0 16px;background:#fbf5ea;color:#2b1d14;line-height:1.45}
+@media (prefers-color-scheme:dark){body{background:#1c130d;color:#f6e9d4}input{background:#2a1d14;color:#f6e9d4}}
+h1{font:700 24px Georgia,serif;color:#c8372d}
+label{display:block;margin:8px 0}input{width:100%;padding:8px;box-sizing:border-box;border:1px solid #999;border-radius:8px}
+button{margin-top:12px;padding:12px 20px;border:0;border-radius:10px;background:#c8372d;color:#fff;font-weight:700;font-size:16px}
+button:disabled{opacity:.5}#log{white-space:pre-wrap;font:13px monospace;margin-top:14px}
+</style>
+</head>
+<body>
+<h1>Generador de mundo</h1>
+<p>Descarga las calles y edificios reales de OpenStreetMap para un recuadro y crea el archivo <b>world.json</b> que usa el juego. Empieza con un área pequeña (1 a 2 km).</p>
+<label>Sur (latitud mínima)<input id="s" value="18.4690"></label>
+<label>Oeste (longitud mínima)<input id="w" value="-69.8895"></label>
+<label>Norte (latitud máxima)<input id="n" value="18.4800"></label>
+<label>Este (longitud máxima)<input id="e" value="-69.8800"></label>
+<button id="go">Generar world.json</button>
+<div id="log">Valores por defecto: la Zona Colonial de Santo Domingo.</div>
+<p><small>Datos © colaboradores de OpenStreetMap (licencia ODbL).</small></p>
+<script>
+const $=id=>document.getElementById(id),log=m=>$('log').textContent+='\n'+m;
+const URLS=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
+const RW={motorway:14,trunk:12,primary:10,secondary:8,tertiary:7,residential:6,unclassified:6,living_street:5,service:4,pedestrian:4,footway:2.5,path:2.5,cycleway:2.5,steps:2,track:3};
+$('go').onclick=async()=>{
+ $('go').disabled=true;$('log').textContent='Descargando datos…';
+ const [s,w,n,e]=['s','w','n','e'].map(i=>parseFloat($(i).value));
+ if([s,w,n,e].some(isNaN)||n<=s||e<=w){log('Revisa las coordenadas.');$('go').disabled=false;return}
+ const bb=`(${s},${w},${n},${e})`;
+ const q=`[out:json][timeout:90];(way["highway"]${bb};way["building"]${bb};way["natural"="water"]${bb};way["leisure"~"park|garden"]${bb};);out geom;`;
+ let data;
+ for(const u of URLS){try{const r=await fetch(u,{method:'POST',body:'data='+encodeURIComponent(q)});if(!r.ok)throw new Error('código '+r.status);data=await r.json();break}catch(err){log('Falló '+u+': '+err.message)}}
+ if(!data){log('No se pudo descargar. Espera un minuto o prueba con un área más pequeña.');$('go').disabled=false;return}
+ const lat0=(s+n)/2,lon0=(w+e)/2,kx=111320*Math.cos(lat0*Math.PI/180),kz=110540;
+ const L=(la,lo)=>[+((lo-lon0)*kx).toFixed(1),+(-(la-lat0)*kz).toFixed(1)];
+ const P=g=>g.flatMap(p=>L(p.lat,p.lon));
+ const out={origin:{lat:lat0,lon:lon0},r:[],b:[],w:[],g:[],goal:L(18.47354,-69.88343),spawn:[0,0]};
+ for(const el of data.elements){const g=el.geometry;if(!g||g.length<2)continue;const t=el.tags||{};
+  if(t.highway){if(RW[t.highway])out.r.push([RW[t.highway],P(g)])}
+  else if(t.building){if(g.length<4)continue;const h=parseFloat(t.height)||(parseFloat(t['building:levels'])||0)*3.2;out.b.push([+h.toFixed(1),el.id%1000,P(g)])}
+  else if(t.natural==='water'){if(g.length>=4)out.w.push(P(g))}
+  else if(g.length>=4)out.g.push(P(g))}
+ let best=1e12;
+ for(const[wd,p]of out.r){if(wd<6)continue;for(let i=0;i<p.length;i+=2){const d=p[i]**2+p[i+1]**2;if(d<best){best=d;out.spawn=[p[i],p[i+1]]}}}
+ log(`Calles: ${out.r.length} · Edificios: ${out.b.length} · Agua: ${out.w.length} · Parques: ${out.g.length}`);
+ const blob=new Blob([JSON.stringify(out)],{type:'application/json'});
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='world.json';a.click();
+ log(`Listo: world.json descargado (${(blob.size/1048576).toFixed(2)} MB). Súbelo a public/world/ en tu repositorio.`);
+ $('go').disabled=false};
+</script>
+</body>
+</html>
