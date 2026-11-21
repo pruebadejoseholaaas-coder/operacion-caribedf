@@ -36,7 +36,21 @@ export async function loadWorld(T, scene, colliders) {
     c[kind].push(f);
   };
   let m = 0;
-  d.r.forEach(f => { add('r', f, f[1]); f[1].forEach(v => m = Math.max(m, Math.abs(v))); });
+  d.r.forEach(([w, p]) => {
+  for (let i = 0; i + 3 < p.length; i += 2) {
+    const segment = [p[i], p[i + 1], p[i + 2], p[i + 3]];
+    const center = [
+      (p[i] + p[i + 2]) / 2,
+      (p[i + 1] + p[i + 3]) / 2
+    ];
+
+    add('r', [w, segment], center);
+
+    segment.forEach(v => {
+      m = Math.max(m, Math.abs(v));
+    });
+  }
+});
   d.b.forEach(f => add('b', f, f[2]));
  d.w.forEach(f => add('w', f, f));
 d.g.forEach(f => add('g', f, f));
