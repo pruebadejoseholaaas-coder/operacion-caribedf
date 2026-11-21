@@ -13,3 +13,16 @@ canvas{position:fixed;inset:0;display:block}
 #knob{position:absolute;left:40px;top:40px;width:40px;height:40px;border-radius:50%;background:var(--hot)}
 .b{position:fixed;right:22px;width:64px;height:64px;border-radius:50%;border:0;background:var(--hot);color:#fff;font:700 15px inherit;display:none}
 @media (pointer:coarse){#stick,.b{display:block}#c{display:none}}
+
+#roles{position:fixed;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;background:rgba(16,10,6,.8);overflow:auto;padding:16px;box-sizing:border-box;touch-action:pan-y}
+#roles .box{max-width:760px;width:100%;color:#f6e9d4;text-align:center}
+#roles h1{font:700 30px Georgia,serif;margin:0 0 4px}
+#roles p{margin:0 0 16px;opacity:.85}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.card{border:2px solid var(--c);background:rgba(255,255,255,.07);color:#f6e9d4;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:6px;text-align:left;font:inherit;cursor:pointer}
+.card:hover{background:rgba(255,255,255,.17)}
+.card .ic{font-size:30px}.card small{font-size:12.5px;line-height:1.35;opacity:.9}
+.card em{font-style:normal;font-size:12px;font-weight:700;color:var(--c)}
+#ab{top:calc(env(safe-area-inset-top,0px) + 74px);left:10px;font-size:13px;font-weight:700}
+#feed{top:calc(env(safe-area-inset-top,0px) + 120px);left:10px;font-size:12px;max-width:240px}
+#feed div{margin:2px 0}
