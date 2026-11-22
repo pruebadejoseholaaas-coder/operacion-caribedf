@@ -211,6 +211,32 @@ export function createBusinessSystem(T, scene, colliders) {
     }
    }
    if(data.id==='ventorrillo'){for(let i=0;i<2;i++){cube(g,.9,1.9,.72,0x4c9db0,2.65,1,-1.2+i*1.15);cube(g,.92,.12,.74,0xd8e8ed,2.65,1.96,-1.2+i*1.15)}for(let i=0;i<3;i++)cube(g,.55,.65,.55,0xd8c5a1,-2.8,.45,1.8+i*.58)}
+  if(data.id==='ventorrillo'){
+   // Puesto pequeño de barrio con techo de zinc, madera y despacho hacia la acera.
+   cube(g,5.7,.16,1.55,0x858b8b,0,2.82,front+.72);
+   for(let i=0;i<7;i++)cube(g,.035,.035,1.48,0x62696a,-2.7+i*.9,2.91,front+.72);
+   for(const px of [-2.65,2.65]){
+    cube(g,.14,2.55,.14,0x76543b,px,1.28,front+.62);
+    cube(g,.18,.12,.18,0x4b4f4d,px,2.62,front+.62);
+   }
+   cube(g,4.9,.12,.72,0x805b3d,0,.9,front+.18);
+   cube(g,4.95,.1,.12,0x5c402e,0,1.02,front+.48);
+   // Cajones de víveres, plátanos y huevos en la parte visible del puesto.
+   for(let i=0;i<3;i++){
+    cube(g,.92,.5,.72,0x9a7048,-2.25+i*.95,.3,front+1.12);
+    for(let j=0;j<3;j++){
+     const item=new T.Mesh(new T.SphereGeometry(.16,8,6),material(i===0?0x8da83c:i===1?0xe0d2b1:0xd8bd83));
+     item.position.set(-2.52+i*.95+j*.25,.62,front+1.12);g.add(item);
+    }
+   }
+   // Fundas de productos colgadas y un pequeño menú de precios.
+   for(let i=0;i<6;i++)cube(g,.2,.32,.055,[0xd94a36,0xe5b83b,0x3d78ae,0x2f9b70][i%4],-1.15+i*.43,1.75,front+.04);
+   cube(g,1.15,.78,.07,0x273f36,2.05,1.85,front+.05);
+   cube(g,.94,.08,.08,0xf0d49a,2.05,2.2,front+.1);
+   // Banco bajo para clientes y cajas apiladas al costado.
+   cube(g,1.15,.18,.42,0x805b3d,2.15,.48,front+1.2);
+   for(let i=0;i<2;i++)cube(g,.48,.42,.48,i?0x397b50:0x9a7048,-3.05,.23,front+.25+i*.52);
+  }
   if(data.id==='comedor'||data.id==='frituras'||data.id==='empanadas'){for(let i=0;i<2;i++){cube(g,1.05,.12,.72,0x8b6348,-2.5,.65,.2+i*1.25);for(const xx of [-.4,.4])cube(g,.12,.55,.12,0x54463b,-2.5+xx,.32,.2+i*1.25)}}
   if(data.id==='jugos'){for(let i=0;i<2;i++){const m=new T.Mesh(new T.CylinderGeometry(.13,.16,.38,10),material(0x7eb8c7));m.position.set(2.4,.55,-1+i*.65);g.add(m)}}
   if(data.id==='panaderia'||data.id==='reposteria'){cube(g,1.25,1.35,.9,0x51433a,2.55,.8,-1.55);cube(g,.9,.7,.08,0xe4b66d,2.55,.85,-1.05);for(let i=0;i<3;i++)cube(g,.9,.1,.5,0xb18a5b,-2.7,.5+i*.42,-1.2)}
