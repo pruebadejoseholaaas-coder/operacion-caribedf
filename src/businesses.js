@@ -42,7 +42,7 @@ export function createBusinessSystem(T, scene, colliders) {
  const money=n=>'RD$ '+Math.round(n).toLocaleString('es-DO');
  function signTexture(text,color){const c=document.createElement('canvas');c.width=512;c.height=112;const x=c.getContext('2d');x.fillStyle='#'+color.toString(16).padStart(6,'0');x.fillRect(0,0,512,112);x.strokeStyle='#fff0c9';x.lineWidth=7;x.strokeRect(6,6,500,100);x.fillStyle='#fff';x.font='bold 34px Trebuchet MS';x.textAlign='center';x.textBaseline='middle';x.fillText(text,256,56,470);return new T.CanvasTexture(c)}
  function person(parent,shirt,skin=0x9b684b){const g=new T.Group();parent.add(g);cube(g,.58,.82,.34,shirt,0,1.2,0);const head=new T.Mesh(new T.SphereGeometry(.22,10,8),material(skin));head.position.y=1.82;g.add(head);cube(g,.18,.55,.2,0x26364a,-.16,.5,0);cube(g,.18,.55,.2,0x26364a,.16,.5,0);const a=cube(g,.14,.62,.14,shirt,-.38,1.28,0),b=cube(g,.14,.62,.14,shirt,.38,1.28,0);return{g,a,b,phase:Math.random()*6}}
- function transformedBoxCollider(group,w,h,d,x,y,z){const c=Math.cos(group.rotation.y),s=Math.sin(group.rotation.y),corners=[[-w/2,-d/2],[w/2,-d/2],[w/2,d/2],[-w/2,d/2]].map(([lx,lz])=>[group.position.x+lx*c+lz*s+x,group.position.z-lx*s+lz*c+z]);const xs=corners.map(p=>p[0]),zs=corners.map(p=>p[1]);colliders.push({x0:Math.min(...xs),x1:Math.max(...xs),z0:Math.min(...zs),z1:Math.max(...zs)})}
+ function transformedBoxCollider(group,w,h,d,x,y,z){const c=Math.cos(group.rotation.y),s=Math.sin(group.rotation.y),corners=[[-w/2,-d/2],[w/2,-d/2],[w/2,d/2],[-w/2,d/2]].map(([lx,lz])=>[group.position.x+lx*c+lz*s+x,group.position.z-lx*s+lz*c+z]);const xs=corners.map(p=>p[0]),zs=corners.map(p=>p[1]),poly=corners.flat();colliders.push({x0:Math.min(...xs),x1:Math.max(...xs),z0:Math.min(...zs),z1:Math.max(...zs),poly})}
  function build(data,index){
   const [x,z,dx,dz,side]=SITES[index],g=new T.Group();g.position.set(x,0,z);g.rotation.y=Math.atan2(-dx*side,-dz*side);scene.add(g);
   const W=8.2,D=6.6,wall=.22,front=D/2;
@@ -84,13 +84,14 @@ export function createBusinessSystem(T, scene, colliders) {
  function interact(pos){let nearest=null,best=9;for(const s of shops){const d=Math.hypot(pos.x-s.g.position.x,pos.z-s.g.position.z);if(d<best){best=d;nearest=s}}if(nearest){setPanel(nearest);return true}return false}
  function update(dt,pos,clock){
   const hour=Math.floor(clock/3600),minute=Math.floor(clock%3600/60),time=hour+minute/60;
-  for(const s of shops){const {data}=s;s.open=data.close<data.open?(time>=data.open||time<data.close):(time>=data.open&&time<data.close);s.phase+=dt;
+  let nearbyShop=null,nearDistance=9;
+  for(const s of shops){const {data}=s;const distance=Math.hypot(pos.x-s.g.position.x,pos.z-s.g.position.z);if(distance<nearDistance){nearDistance=distance;nearbyShop=s}s.open=data.close<data.open?(time>=data.open||time<data.close):(time>=data.open&&time<data.close);s.phase+=dt;
    s.worker.g.visible=s.open;s.customer.g.visible=s.open&&Math.sin(s.phase*.23)>.15;
    const stations=[[-2.4,-.65],[0,-.65],[2.3,-.65]],target=stations[Math.floor(s.phase/5)%stations.length];s.worker.g.position.x+=(target[0]-s.worker.g.position.x)*(1-Math.exp(-dt*1.7));s.worker.g.position.z+=(target[1]-s.worker.g.position.z)*(1-Math.exp(-dt*1.7));s.worker.a.rotation.x=Math.sin(s.phase*3)*.55;s.worker.b.rotation.x=-Math.sin(s.phase*3)*.55;
    const walk=(s.clientPhase+=dt*.12)%1;s.customer.g.position.x=Math.sin(walk*Math.PI*2)*.8;s.customer.g.position.z=2.35-Math.sin(walk*Math.PI)*.8;s.customer.a.rotation.x=Math.sin(s.phase*2)*.3;s.customer.b.rotation.x=-s.customer.a.rotation.x;
    s.g.visible=true;
   }
-  if(hud){hud.textContent='Comercios: '+shops.filter(s=>s.open).length+'/10 abiertos · '+money(economy.cash)}
+  if(hud){hud.textContent='Comercios: '+shops.filter(s=>s.open).length+'/10 abiertos · '+money(economy.cash)+(nearbyShop?' · F: '+nearbyShop.data.kind:'')}
   if(active&&info){info.textContent=(active.open?'Abierto':'Cerrado')+' · '+active.data.detail+' · Ventas simuladas: '+active.sales+' · '+money(economy.cash);if(!active.open)products.querySelectorAll('button').forEach(b=>b.disabled=true)}
  }
  return{update,interact,close:closePanel,shops};
