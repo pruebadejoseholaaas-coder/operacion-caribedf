@@ -13,19 +13,57 @@ export async function loadWorld(T, scene, colliders) {
   const cells = new Map(), loaded = new Map(), mats = {};
   const mat = (c, o = {}) => mats[c + JSON.stringify(o)] || (mats[c + JSON.stringify(o)] = new T.MeshLambertMaterial({ color: c, ...o }));
 
-  // Textura de fachada: una ventana por cada módulo de 3.2 m (el color de cada edificio la tiñe)
-  const cv = document.createElement('canvas'); cv.width = cv.height = 64;
-  const x = cv.getContext('2d');
-  x.fillStyle = '#fff'; x.fillRect(0, 0, 64, 64);
-  x.fillStyle = '#cfc6b8'; x.fillRect(0, 58, 64, 6);
-  x.fillStyle = '#e8e2d6'; x.fillRect(15, 11, 34, 40);
-  x.fillStyle = '#2f3f52'; x.fillRect(18, 14, 28, 34);
-  x.fillStyle = '#6f98b8'; x.fillRect(20, 16, 11, 14); x.fillRect(33, 16, 11, 14);
-  x.fillStyle = '#e8e2d6'; x.fillRect(31, 14, 2, 34);
-  const tex = new T.CanvasTexture(cv);
-  tex.wrapS = tex.wrapT = T.RepeatWrapping; tex.repeat.set(1 / 3.2, 1 / 3.2); tex.anisotropy = 4;
-  const wall = c => mat(c, { map: tex });
-  const roof = mat(0x8d4b32);
+  // Fachadas con estilos distintos. La clasificación se calcula por geometría del sector,
+  // porque el archivo cartográfico no contiene etiquetas de uso del suelo.
+  const facadeTexture = style => {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+    const x = cv.getContext('2d');
+    if (style === 'commercial') {
+      x.fillStyle = '#d9e0e2'; x.fillRect(0, 0, 64, 64);
+      x.fillStyle = '#253d50'; x.fillRect(5, 8, 54, 48);
+      x.fillStyle = '#80b8ca'; x.fillRect(8, 11, 22, 42); x.fillRect(34, 11, 22, 42);
+      x.fillStyle = '#d5e0dc'; x.fillRect(30, 8, 4, 48);
+      x.fillStyle = '#b8c5c8'; x.fillRect(0, 57, 64, 7);
+    } else if (style === 'industrial') {
+      x.fillStyle = '#aeb5b2'; x.fillRect(0, 0, 64, 64);
+      x.fillStyle = '#858f91'; for (let y = 5; y < 64; y += 8) x.fillRect(0, y, 64, 2);
+      x.fillStyle = '#34444a'; x.fillRect(8, 23, 48, 32);
+      x.fillStyle = '#71878c'; x.fillRect(11, 26, 42, 26);
+      x.fillStyle = '#c6c9c3'; x.fillRect(0, 57, 64, 7);
+    } else {
+      x.fillStyle = '#eee6d7'; x.fillRect(0, 0, 64, 64);
+      x.fillStyle = '#cfc6b8'; x.fillRect(0, 58, 64, 6);
+      x.fillStyle = '#e8e2d6'; x.fillRect(15, 11, 34, 40);
+      x.fillStyle = '#2f3f52'; x.fillRect(18, 14, 28, 34);
+      x.fillStyle = '#6f98b8'; x.fillRect(20, 16, 11, 14); x.fillRect(33, 16, 11, 14);
+      x.fillStyle = '#e8e2d6'; x.fillRect(31, 14, 2, 34);
+    }
+    const texture = new T.CanvasTexture(cv);
+    texture.wrapS = texture.wrapT = T.RepeatWrapping;
+    texture.repeat.set(1 / 3.2, 1 / 3.2); texture.anisotropy = 4;
+    return texture;
+  };
+  const facadeTextures = {
+    residential: facadeTexture('residential'),
+    commercial: facadeTexture('commercial'),
+    industrial: facadeTexture('industrial')
+  };
+  const facadeMats = {};
+  const wall = (c, style) => {
+    const key = style + ':' + c;
+    return facadeMats[key] || (facadeMats[key] = new T.MeshLambertMaterial({ color: c, map: facadeTextures[style] }));
+  };
+  const roofMats = {
+    residential: mat(0x8d4b32),
+    commercial: mat(0x65757b),
+    industrial: mat(0x777b78)
+  };
+  const districtPalettes = {
+    residential: [0xf2c14e, 0xe76f51, 0x2a9d8f, 0xf4a261, 0xe9c46a, 0xf1e9d8, 0xd97aa6],
+    commercial: [0xb8c9d4, 0xd9d3c5, 0x8fb6c5, 0xc7b9a4, 0xe3d8c6],
+    industrial: [0x9b9b91, 0xb1aaa0, 0x8e9b9e, 0xb5b1a5],
+    green: [0xd5c7a7, 0xb8c9a5, 0xe0d1b5, 0xc7bda7]
+  };
 
   const trunkG = new T.CylinderGeometry(.15, .2, 2.4, 5); trunkG.translate(0, 1.2, 0);
   const crownG = new T.SphereGeometry(1.5, 6, 5); crownG.translate(0, 3.6, 0);
@@ -88,15 +126,55 @@ export async function loadWorld(T, scene, colliders) {
     me.position.y = y; me.receiveShadow = true; grp.add(me);
   };
 
+  function districtProfile(c) {
+    const avgWidth = c.r.length ? c.r.reduce((sum, item) => sum + item[0], 0) / c.r.length : 0;
+    const avgFootprint = c.b.length ? c.b.reduce((sum, item) => {
+      const p = item[2]; let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      for (let i = 0; i < p.length; i += 2) { x0 = Math.min(x0, p[i]); x1 = Math.max(x1, p[i]); z0 = Math.min(z0, p[i + 1]); z1 = Math.max(z1, p[i + 1]); }
+      return sum + Math.max(0, x1 - x0) * Math.max(0, z1 - z0);
+    }, 0) / c.b.length : 0;
+    if (avgFootprint > 700 && avgWidth >= 7) return 'industrial';
+    if (c.b.length >= 55 && c.r.length >= 12) return 'commercial';
+    if (c.g.length && c.b.length < 45) return 'green';
+    return 'residential';
+  }
+
+  const lampPoleG = new T.CylinderGeometry(.075, .11, 5.5, 6);
+  const lampHeadG = new T.BoxGeometry(.72, .14, .28);
+  const utilityPoleG = new T.CylinderGeometry(.09, .14, 7.4, 6);
+  const binG = new T.BoxGeometry(.48, .72, .48);
+  const benchSeatG = new T.BoxGeometry(1.35, .12, .42);
+  const benchBackG = new T.BoxGeometry(1.35, .55, .1);
+  const benchLegG = new T.BoxGeometry(.1, .42, .1);
+  const addInstances = (grp, geometry, color, items, castShadow = false) => {
+    if (!items.length) return;
+    const mesh = new T.InstancedMesh(geometry, mat(color), items.length);
+    const dummy = new T.Object3D();
+    items.forEach((item, i) => {
+      dummy.position.set(item[0], item[1], item[2]);
+      dummy.rotation.y = item[3] || 0;
+      dummy.scale.set(item[4] || 1, item[5] || 1, item[6] || 1);
+      dummy.updateMatrix(); mesh.setMatrixAt(i, dummy.matrix);
+    });
+    mesh.instanceMatrix.needsUpdate = true; mesh.castShadow = castShadow; mesh.receiveShadow = true;
+    grp.add(mesh);
+  };
+
   function build(k, c) {
     const grp = new T.Group();
+    const district = districtProfile(c);
+    const palette = districtPalettes[district] || districtPalettes.residential;
     const boxes = c.b.map(([, , p]) => {
       let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
       for (let i = 0; i < p.length; i += 2) { x0 = Math.min(x0, p[i]); x1 = Math.max(x1, p[i]); z0 = Math.min(z0, p[i + 1]); z1 = Math.max(z1, p[i + 1]); }
       return [x0, x1, z0, z1];
     });
-    const road = [], walk = [], mark = [], trees = [];
-    let tacc = 0, side = 1;
+    const road = [], walk = [], mark = [], curb = [], trees = [];
+    const lamps = [], utilityPoles = [], bins = [], benches = [];
+    let tacc = 0, side = 1, lampDistance = 0, poleDistance = 0, lampIndex = 0, poleIndex = 0;
+    const clearFurniture = (x, z, radius = 2.2) =>
+      !boxes.some(b => x > b[0] - radius && x < b[1] + radius && z > b[2] - radius && z < b[3] + radius) &&
+      !trees.some((v, i) => i % 2 === 0 && Math.hypot(x - v, z - trees[i + 1]) < radius + 1);
     c.r.forEach(([w, p]) => {
       let acc = 0;
       for (let i = 0; i + 3 < p.length; i += 2) {
@@ -105,8 +183,10 @@ export async function loadWorld(T, scene, colliders) {
         const nx = -dz / l, nz = dx / l;
         seg(road, x1, z1, x2, z2, nx, nz, -w / 2, w / 2);
         if (w >= 5 && w <= 14) {
-          seg(walk, x1, z1, x2, z2, nx, nz, w / 2, w / 2 + 2.2);
-          seg(walk, x1, z1, x2, z2, nx, nz, -w / 2 - 2.2, -w / 2);
+          seg(walk, x1, z1, x2, z2, nx, nz, w / 2, w / 2 + 3.1);
+          seg(walk, x1, z1, x2, z2, nx, nz, -w / 2 - 3.1, -w / 2);
+          seg(curb, x1, z1, x2, z2, nx, nz, w / 2 + 2.95, w / 2 + 3.1);
+          seg(curb, x1, z1, x2, z2, nx, nz, -w / 2 - 3.1, -w / 2 - 2.95);
         }
         if (w >= 6) {
           for (let s = -(acc % 7); s < l; s += 7) {
@@ -120,11 +200,34 @@ export async function loadWorld(T, scene, colliders) {
           const tx = x1 + nx * side * (w / 2 + 1.1), tz = z1 + nz * side * (w / 2 + 1.1);
           if (!boxes.some(b => tx > b[0] - 1 && tx < b[1] + 1 && tz > b[2] - 1 && tz < b[3] + 1)) trees.push(tx, tz);
         }
+        if (w >= 6 && w <= 12) {
+          const lampStart = 52 - (lampDistance % 52);
+          for (let d = lampStart; d < l; d += 52) {
+            const along = d / l, lx = x1 + dx * along, lz = z1 + dz * along;
+            const lampSide = lampIndex++ % 2 ? 1 : -1;
+            const px = lx + nx * lampSide * (w / 2 + 2.45), pz = lz + nz * lampSide * (w / 2 + 2.45);
+            if (clearFurniture(px, pz, 1.35)) {
+              const angle = Math.atan2(dx, dz);
+              lamps.push([px, 2.75, pz, angle]);
+              if (lampIndex % 3 === 0) bins.push([px + dx / l * 2.4, .38, pz + dz / l * 2.4]);
+            }
+          }
+          lampDistance += l;
+          const poleStart = 96 - (poleDistance % 96);
+          for (let d = poleStart; d < l; d += 96) {
+            const along = d / l, px0 = x1 + dx * along, pz0 = z1 + dz * along;
+            const poleSide = poleIndex++ % 2 ? -1 : 1;
+            const px = px0 + nx * poleSide * (w / 2 + 2.7), pz = pz0 + nz * poleSide * (w / 2 + 2.7);
+            if (clearFurniture(px, pz, 1.5)) utilityPoles.push([px, 3.7, pz]);
+          }
+          poleDistance += l;
+        }
       }
     });
     strip(road, 0x3b3b40, .03, -1, grp);
     strip(walk, 0xb9b2a5, .1, -2, grp);
     strip(mark, 0xf2c14e, .06, -4, grp);
+    strip(curb, 0x77766f, .12, -3, grp);
     if (trees.length) {
       const n = trees.length / 2, o = new T.Object3D();
       const tr = new T.InstancedMesh(trunkG, mat(0x7a5a3a), n), cr = new T.InstancedMesh(crownG, mat(0x3f8f3a), n);
@@ -135,12 +238,31 @@ export async function loadWorld(T, scene, colliders) {
       grp.add(tr, cr);
     }
     c.w.forEach(p => flat(p, 0x2b8fd6, .02, grp));
-    c.g.forEach(p => flat(p, 0x4a9a4a, .02, grp));
+    c.g.forEach(p => {
+      flat(p, 0x4a9a4a, .02, grp);
+      let sx = 0, sz = 0, count = 0;
+      for (let i = 0; i < p.length; i += 2) { sx += p[i]; sz += p[i + 1]; count++; }
+      if (count >= 4) {
+        const bx = sx / count, bz = sz / count;
+        benches.push([bx, .64, bz], [bx, .64, bz + 2.1]);
+        bins.push([bx + 2.1, .38, bz]);
+      }
+    });
+    addInstances(grp, lampPoleG, 0x424b4d, lamps, true);
+    addInstances(grp, lampHeadG, 0xe6d8a6, lamps.map(([x, y, z, a]) => [x + Math.sin(a) * .3, 5.45, z + Math.cos(a) * .3, a]), false);
+    addInstances(grp, utilityPoleG, 0x6e5b45, utilityPoles, true);
+    addInstances(grp, binG, 0x3e5550, bins, false);
+    addInstances(grp, benchSeatG, 0x876b4e, benches, false);
+    addInstances(grp, benchBackG, 0x6f5b45, benches.map(([x, y, z]) => [x, 1.02, z + .18]), false);
+    addInstances(grp, benchLegG, 0x42413d, benches.flatMap(([x, y, z]) => [[x - .52, .25, z], [x + .52, .25, z]]), false);
     c.b.forEach(([h, id, p], bi) => {
       try {
         const hh = h || 6.4 + (id % 3) * 3.2;
         const g = new T.ExtrudeGeometry(shape(p), { depth: hh, bevelEnabled: false }); g.rotateX(-Math.PI / 2);
-        const me = new T.Mesh(g, [roof, wall(PAL[id % PAL.length])]); me.castShadow = me.receiveShadow = true; grp.add(me);
+        const style = district === 'green' ? 'residential' : district;
+        const colors = palette;
+        const facadeColor = colors[(Math.abs(id) + bi * 3) % colors.length];
+        const me = new T.Mesh(g, [roofMats[style] || roofMats.residential, wall(facadeColor, style)]); me.castShadow = me.receiveShadow = true; grp.add(me);
         const b = boxes[bi], bw=b[1]-b[0], bd=b[3]-b[2], cx=(b[0]+b[1])/2, cz=(b[2]+b[3])/2;
         // Detalles habituales de viviendas dominicanas: tinacos y balcones sencillos.
         if (bw>3.5 && bd>3.5 && bi%4===0) {
