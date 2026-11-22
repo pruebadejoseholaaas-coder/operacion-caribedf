@@ -46,3 +46,9 @@ canvas{position:fixed;inset:0;display:block}
 .business-buy:disabled{opacity:.45}
 @media(pointer:coarse){#business-hud{top:calc(env(safe-area-inset-top,0px) + 190px);left:10px;max-width:170px}#bF{display:block}}
 @media(max-width:440px){#business-products{grid-template-columns:1fr}.business-card{padding:15px}}
+
+#minimap{position:fixed;top:auto;left:auto;right:18px;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);z-index:6;border-radius:50%;border:3px solid rgba(255,240,210,.88);box-shadow:0 6px 22px rgba(0,0,0,.45);background:#20242a;cursor:pointer;touch-action:manipulation}
+@media (pointer:coarse){#minimap{right:10px;bottom:auto;top:calc(env(safe-area-inset-top,0px) + 202px)}}
+#bigmap{display:none;position:fixed;inset:0;z-index:20;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;background:rgba(10,12,15,.92)}
+#bigmap-canvas{position:static;inset:auto;width:min(92vw,76vh);height:min(92vw,76vh);background:#14171b;border:2px solid #8a5736;border-radius:14px}
+#bigmap-close{position:absolute;top:16px;right:16px;border:0;border-radius:10px;background:#7c342c;color:#fff;padding:10px 14px;font:700 14px inherit;cursor:pointer}

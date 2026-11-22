@@ -43,51 +43,81 @@ const CATALOG = [
  {id:'taller-autos',name:'Auto Servicio La 27',kind:'TALLER MECÁNICO AUTOMOTRIZ',open:7,close:18,wall:0xc3c9cc,trim:0x3d596b,task:'diagnostica y repara vehículos',products:[['Diagnóstico básico',650,0x6d8794],['Cambio de aceite',1450,0x9b7654],['Revisión de frenos',1100,0x59636a],['Alineación',1250,0x8da0a8]],detail:'Bahía para vehículos, gato hidráulico, elevador, herramientas, compresor y mostrador de piezas'}
 ];
 
-const SITES = [
- [-77.7133,-35.8843,-.1739,-.9848,1],
- [66.6292,91.1581,.1306,.9914,1],
- [49.5823,97.6675,.9454,-.3260,1],
- [81.9965,89.1337,.1306,.9914,-1],
- [98.3043,81.1439,.9491,-.3149,1],
- [36.1573,125.1037,.1823,.9832,-1],
- [-137.0011,-58.1944,-.8687,.4954,-1],
- [109.086,102.4743,-.1624,-.9867,-1],
- [55.199,134.8665,.9757,-.2193,-1],
- [75.2938,132.1746,.1756,.9845,1],
- [-21.4617,-182.5441,.0948,.9955,1],
- [90.5529,129.4523,.1756,.9845,-1],
- [104.8089,124.3409,.9815,-.1916,-1],
- [188.2442,-44.9655,.9945,-.1049,-1],
- [40.5545,175.1721,.1033,.9947,-1],
- [-73.5309,-213.6123,.2598,-.9657,1],
- [-43.9319,-225.6039,.9997,.0237,1],
- [140.4154,-188.3196,.9901,.1407,1],
- [-150.3262,-173.2323,.962,-.2731,1],
- [-94.7752,-219.3287,.2598,-.9657,-1],
- [-118.4,42.6,.98,.18,1],
- [-112.2,119.8,.12,.99,-1],
- [-8.5,154.2,.96,-.28,1],
- [132.4,72.6,.21,.98,-1],
- [165.2,12.8,.99,.1,1],
- [-184.3,22.5,.94,-.34,-1],
- [4.8,-142.5,.18,.98,1],
- [154.6,-112.2,.97,.22,-1],
- [-190.4,-92.7,.24,-.97,1],
- [12.6,214.3,.99,.05,-1],
+// Coloca los comercios en solares libres junto a la vía, mirando hacia la calle.
+// Antes había 40 coordenadas fijas y 16 caían dentro de edificios del mapa real.
+function placeShops(world, count) {
+  const roads = world.roads || [], buildings = world.buildings || [];
+  const spawn = world.spawn || [0, 0];
+  const W = 8.2, D = 6.6, MIN_GAP = 20;
+  const insidePoly = (x, z, p) => {
+    let ins = false;
+    for (let i = 0, j = p.length - 2; i < p.length; j = i, i += 2) {
+      const xi = p[i], zi = p[i + 1], xj = p[j], zj = p[j + 1];
+      if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / ((zj - zi) || 1e-6) + xi) ins = !ins;
+    }
+    return ins;
+  };
+  const segCross = (a, b, c, d) => {
+    const rx = b[0] - a[0], rz = b[1] - a[1], sx = d[0] - c[0], sz = d[1] - c[1];
+    const den = rx * sz - rz * sx;
+    if (Math.abs(den) < 1e-9) return false;
+    const t = ((c[0] - a[0]) * sz - (c[1] - a[1]) * sx) / den;
+    const u = ((c[0] - a[0]) * rz - (c[1] - a[1]) * rx) / den;
+    return t > 0 && t < 1 && u > 0 && u < 1;
+  };
+  const overlaps = (rect, poly) => {
+    for (const p of rect) if (insidePoly(p[0], p[1], poly)) return true;
+    let rx0 = Infinity, rx1 = -Infinity, rz0 = Infinity, rz1 = -Infinity;
+    for (const p of rect) { rx0 = Math.min(rx0, p[0]); rx1 = Math.max(rx1, p[0]); rz0 = Math.min(rz0, p[1]); rz1 = Math.max(rz1, p[1]); }
+    for (let i = 0; i < poly.length; i += 2) {
+      if (poly[i] > rx0 && poly[i] < rx1 && poly[i + 1] > rz0 && poly[i + 1] < rz1) return true;
+    }
+    for (let i = 0; i < rect.length; i++) {
+      const a = rect[i], b = rect[(i + 1) % rect.length];
+      for (let k = 0; k < poly.length - 2; k += 2) {
+        if (segCross(a, b, [poly[k], poly[k + 1]], [poly[k + 2], poly[k + 3]])) return true;
+      }
+    }
+    return false;
+  };
+  const slots = [];
+  for (const r of roads) {
+    if (r.width < 6) continue;
+    const p = r.points;
+    for (let i = 0; i + 3 < p.length; i += 2) {
+      const ax = p[i], az = p[i + 1], bx = p[i + 2], bz = p[i + 3];
+      const len = Math.hypot(bx - ax, bz - az);
+      if (len < 10) continue;
+      const dx = (bx - ax) / len, dz = (bz - az) / len, nx = -dz, nz = dx;
+      for (let s = 5; s < len - 5; s += 7) {
+        const px = ax + dx * s, pz = az + dz * s;
+        for (const side of [1, -1]) {
+          const off = r.width / 2 + 2.2 + D / 2;
+          const cx = px + nx * side * off, cz = pz + nz * side * off;
+          const dist = Math.hypot(cx - spawn[0], cz - spawn[1]);
+          if (dist < 45 || dist > 340) continue;
+          if (slots.some(o => Math.hypot(o.x - cx, o.z - cz) < MIN_GAP)) continue;
+          const rect = [[-1, -1], [-1, 1], [1, 1], [1, -1]].map(([a, b]) => [
+            cx + dx * a * W / 2 + nx * side * b * D / 2,
+            cz + dz * a * W / 2 + nz * side * b * D / 2
+          ]);
+          if (buildings.some(b => overlaps(rect, b.poly))) continue;
+          slots.push({ x: cx, z: cz, rot: Math.atan2(dz * side, -dx * side), dist });
+        }
+      }
+    }
+  }
+  slots.sort((a, b) => a.dist - b.dist);
+  const near = slots.filter(s => s.dist < 180).slice(0, 16);
+  const rest = slots.filter(s => s.dist >= 180);
+  const step = Math.max(1, Math.floor(rest.length / Math.max(1, count - near.length)));
+  const chosen = near.slice();
+  for (let i = 0; i < rest.length && chosen.length < count; i += step) chosen.push(rest[i]);
+  for (let i = 0; chosen.length < count && i < slots.length; i++) if (!chosen.includes(slots[i])) chosen.push(slots[i]);
+  return chosen;
+}
 
- [-215.9,245.1,-8.2,-34.7,-1],
- [241.6,190.8,-5.1,-34.2,1],
- [-161,257.5,80.5,-22.4,1],
- [197,233.6,83.7,-32.9,1],
- [-225.8,201.3,-11.7,-52.7,-1],
- [237.1,161.1,-3.8,-25.3,1],
- [-241.6,135.2,-17.7,-69.7,-1],
- [136.3,257.6,37.7,-15.2,1],
- [254.5,-229.2,-12.2,24.1,-1],
- [52.6,-34.1,94.1,-13.9,-1]
-];
-
-export function createBusinessSystem(T, scene, colliders) {
+export function createBusinessSystem(T, scene, colliders, world) {
  const shops=[], matCache=new Map();
  const material=c=>{if(!matCache.has(c))matCache.set(c,new T.MeshLambertMaterial({color:c}));return matCache.get(c)};
  const cube=(parent,w,h,d,color,x,y,z)=>{const m=new T.Mesh(new T.BoxGeometry(w,h,d),material(color));m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m};
@@ -116,8 +146,8 @@ export function createBusinessSystem(T, scene, colliders) {
  function signTexture(text,color){const c=document.createElement('canvas');c.width=512;c.height=112;const x=c.getContext('2d');x.fillStyle='#'+color.toString(16).padStart(6,'0');x.fillRect(0,0,512,112);x.strokeStyle='#fff0c9';x.lineWidth=7;x.strokeRect(6,6,500,100);x.fillStyle='#fff';x.font='bold 34px Trebuchet MS';x.textAlign='center';x.textBaseline='middle';x.fillText(text,256,56,470);return new T.CanvasTexture(c)}
  function person(parent,shirt,skin=0x9b684b){const g=new T.Group();parent.add(g);cube(g,.58,.82,.34,shirt,0,1.2,0);const head=new T.Mesh(new T.SphereGeometry(.22,10,8),material(skin));head.position.y=1.82;g.add(head);cube(g,.18,.55,.2,0x26364a,-.16,.5,0);cube(g,.18,.55,.2,0x26364a,.16,.5,0);const a=cube(g,.14,.62,.14,shirt,-.38,1.28,0),b=cube(g,.14,.62,.14,shirt,.38,1.28,0);return{g,a,b,phase:Math.random()*6}}
  function transformedBoxCollider(group,w,h,d,x,y,z){const c=Math.cos(group.rotation.y),s=Math.sin(group.rotation.y),corners=[[-w/2,-d/2],[w/2,-d/2],[w/2,d/2],[-w/2,d/2]].map(([lx,lz])=>[group.position.x+lx*c+lz*s+x,group.position.z-lx*s+lz*c+z]);const xs=corners.map(p=>p[0]),zs=corners.map(p=>p[1]),poly=corners.flat();colliders.push({x0:Math.min(...xs),x1:Math.max(...xs),z0:Math.min(...zs),z1:Math.max(...zs),poly})}
- function build(data,index){
-  const [x,z,dx,dz,side]=SITES[index],g=new T.Group();g.position.set(x,0,z);g.rotation.y=Math.atan2(-dx*side,-dz*side);scene.add(g);
+ function build(data,site,index){
+  const {x,z,rot}=site,g=new T.Group();g.position.set(x,0,z);g.rotation.y=rot;scene.add(g);
   const W=8.2,D=6.6,wall=.22,front=D/2;
   cube(g,W,.16,D,0x9c8c78,0,.08,0);
   const tiledFloor=new T.Mesh(new T.PlaneGeometry(W-.3,D-.3),floorMaterial);
@@ -681,7 +711,8 @@ export function createBusinessSystem(T, scene, colliders) {
   const hours={open:data.open,close:data.close};
   return{data,g,worker,customer,phase:index*.8,clientPhase:index*.37,open:true,hours,stock:data.products.map(p=>12),sales:0};
  }
- CATALOG.forEach((d,i)=>shops.push(build(d,i)));
+ const sites=placeShops(world,CATALOG.length);
+ CATALOG.forEach((d,i)=>shops.push(build(d,sites[i]||sites[sites.length-1],i)));
  function setPanel(shop){active=shop;if(!panel)return;title.textContent=shop.data.name;info.textContent=shop.open?shop.data.detail+' · Abierto · '+money(economy.cash):'Este negocio está cerrado ahora.';products.replaceChildren();shop.data.products.forEach((p,i)=>{const b=document.createElement('button');b.className='business-buy';b.textContent=p[0]+' · '+money(p[1])+' · '+shop.stock[i]+' disp.';b.disabled=!shop.open||shop.stock[i]<=0||economy.cash<p[1];b.addEventListener('click',()=>{if(!active||!active.open||active.stock[i]<=0||economy.cash<p[1])return;economy.cash-=p[1];active.stock[i]--;economy.inventory[p[0]]=(economy.inventory[p[0]]||0)+1;active.sales++;save();setPanel(active)});products.appendChild(b)});panel.style.display='flex'}
  function closePanel(){active=null;if(panel)panel.style.display='none'}
  close?.addEventListener('click',closePanel);
