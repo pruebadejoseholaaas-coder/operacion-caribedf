@@ -27,3 +27,6 @@ canvas{position:fixed;inset:0;display:block}
 #ab{top:calc(env(safe-area-inset-top,0px) + 74px);left:10px;font-size:13px;font-weight:700}
 #feed{top:calc(env(safe-area-inset-top,0px) + 120px);left:10px;font-size:12px;max-width:240px}
 #feed div{margin:2px 0}
+
+#world-state{top:calc(env(safe-area-inset-top,0px) + 116px);left:10px;font-size:12px;font-weight:700;letter-spacing:.03em}
+@media (pointer:coarse){#world-state{top:calc(env(safe-area-inset-top,0px) + 74px);left:10px;right:auto}}
