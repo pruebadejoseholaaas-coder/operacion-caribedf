@@ -30,3 +30,7 @@ canvas{position:fixed;inset:0;display:block}
 
 #world-state{top:calc(env(safe-area-inset-top,0px) + 116px);left:10px;font-size:12px;font-weight:700;letter-spacing:.03em}
 @media (pointer:coarse){#world-state{top:calc(env(safe-area-inset-top,0px) + 74px);left:10px;right:auto}}
+
+#npc-talk{display:none;left:50%;top:calc(env(safe-area-inset-top,0px) + 158px);transform:translateX(-50%);max-width:min(88vw,360px);font-size:13px;font-weight:700;text-align:center;border:1px solid rgba(255,255,255,.28);z-index:4}
+#sound-toggle{top:calc(env(safe-area-inset-top,0px) + 158px);right:10px;border:0;color:var(--ink);font:700 12px inherit;cursor:pointer;z-index:4}
+@media(pointer:coarse){#npc-talk{top:calc(env(safe-area-inset-top,0px) + 110px)}#sound-toggle{top:calc(env(safe-area-inset-top,0px) + 150px);right:10px}}
