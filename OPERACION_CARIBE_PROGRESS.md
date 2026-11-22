@@ -7,6 +7,16 @@ La verificación se hizo compilando con Vite y ejecutando el juego en Chromium h
 (SwiftShader), leyendo telemetría del propio juego. No se ha probado en un Android físico ni en una
 GPU real, así que el rendimiento final sigue pendiente de validación en dispositivo.
 
+## Estado de publicación
+
+- Rama local: `mundo-abierto-trafico-minimapa`, con 5 commits sobre `main`.
+- **No se pudo subir a GitHub**: el token de la integración devuelve
+  `403 Resource not accessible by integration` al crear la rama o hacer push.
+  El repositorio sigue intacto y no se ha abierto ningún Pull Request.
+- Para publicar: usar una cuenta con permiso de escritura y ejecutar
+  `git push origin mundo-abierto-trafico-minimapa`, después abrir un PR contra `main`.
+- Se generó un parche y un bundle fuera del repositorio para transferir los commits.
+
 ## Cómo se verifica
 
 ```bash
@@ -115,6 +125,8 @@ colisiones, mundo, tráfico, comercios, NPC y jugador. Sirve para pruebas automa
 | Encargo de entrega | Aceptado desde el teléfono, entregado y pagado (+RD$ 353 / +RD$ 401 en dos pruebas). |
 | Pasajeros de parada | 20 pasajeros esperando en 10 paradas; un autobús detenido activa subida y bajada. |
 | Interfaz móvil (390×844, táctil) | Botones sin solaparse, teléfono y mochila caben en pantalla y responden. |
+| Carga final sin errores | Sin `pageerror` ni recursos 404 tras añadir el icono. |
+| Estado final | 16 vehículos, 10 visibles, 22 estacionados, 20 pasajeros, 40 comercios, 121 semáforos, casa a 59 m del inicio. |
 | FPS headless | ≈3,5 fps con SwiftShader; no representa el rendimiento de una GPU real. |
 
 ## Errores conocidos y limitaciones
