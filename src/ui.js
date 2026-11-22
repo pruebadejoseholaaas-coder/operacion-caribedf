@@ -54,7 +54,9 @@ export function createUI(src) {
 
   function renderPhone() {
     if (!phoneBody) return;
-    const job = src.job();
+    const job = src.job ? src.job() : null;
+    const shift = src.shift ? src.shift() : null;
+    const progress = src.progress ? src.progress() : { done: 0, rep: 0 };
     phoneBody.replaceChildren();
     const head = document.createElement('div');
     head.className = 'phone-head';
@@ -63,22 +65,55 @@ export function createUI(src) {
 
     const msg = document.createElement('div');
     msg.className = 'phone-msg';
-    msg.textContent = job
-      ? 'Encargo activo: entrega en ' + job.name + '. Pago: ' + money(job.reward) + '. Sigue el marcador azul.'
-      : 'Tienes un encargo disponible: lleva un paquete a un comercio del barrio. Pago según la distancia.';
+    if (shift) {
+      msg.textContent = shift.phase === 'travel'
+        ? 'Turno: ' + shift.name + '. Ve a ' + shift.where + ' y pulsa E para empezar.'
+        : 'Turno en curso en ' + shift.where + ' · ' + shift.time + ' · ' + shift.served + '/' + shift.goal + ' completados.';
+    } else if (job) {
+      msg.textContent = 'Encargo activo: entrega en ' + job.name + '. Pago: ' + money(job.reward) + '. Sigue el marcador azul.';
+    } else {
+      msg.textContent = 'Elige un trabajo. Los turnos duran unos dos minutos y se pagan en RD$. La reputación aumenta el pago.';
+    }
     phoneBody.appendChild(msg);
 
-    const jobBtn = document.createElement('button');
-    jobBtn.type = 'button'; jobBtn.className = 'phone-action';
-    jobBtn.textContent = job ? 'Cancelar encargo' : 'Aceptar encargo de entrega';
-    jobBtn.addEventListener('click', () => { job ? src.cancelJob() : src.startJob(); renderPhone(); });
-    phoneBody.appendChild(jobBtn);
+    if (shift) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'phone-action';
+      b.textContent = 'Cancelar turno';
+      b.addEventListener('click', () => { src.cancelShift(); renderPhone(); });
+      phoneBody.appendChild(b);
+    } else if (job) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'phone-action';
+      b.textContent = 'Cancelar encargo';
+      b.addEventListener('click', () => { src.cancelJob(); renderPhone(); });
+      phoneBody.appendChild(b);
+    } else {
+      for (const offer of (src.shiftOffers ? src.shiftOffers() : [])) {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'phone-action phone-shift';
+        b.innerHTML = '<b>' + offer.label + '</b><small>' + offer.where + ' · ' + money(offer.pay) + ' · ' + offer.distance + ' m' + (offer.open ? '' : ' · cerrado ahora') + '</small>';
+        b.disabled = !offer.open;
+        b.addEventListener('click', () => { src.startShift(offer.type); renderPhone(); });
+        phoneBody.appendChild(b);
+      }
+      const delivery = document.createElement('button');
+      delivery.type = 'button'; delivery.className = 'phone-action';
+      delivery.textContent = 'Encargo de entrega · pago según la distancia';
+      delivery.addEventListener('click', () => { src.startJob(); renderPhone(); });
+      phoneBody.appendChild(delivery);
+    }
 
     const mapBtn = document.createElement('button');
     mapBtn.type = 'button'; mapBtn.className = 'phone-action';
     mapBtn.textContent = 'Abrir mapa de la ciudad';
     mapBtn.addEventListener('click', () => { closeAll(); src.openMap(); });
     phoneBody.appendChild(mapBtn);
+
+    const rep = document.createElement('div');
+    rep.className = 'phone-rep';
+    rep.textContent = 'Reputación ' + progress.rep + '/100 · ' + progress.done + ' trabajos completados';
+    phoneBody.appendChild(rep);
 
     const contacts = document.createElement('div');
     contacts.className = 'phone-contacts';
