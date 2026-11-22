@@ -173,7 +173,7 @@ function speakNpc(line){
 const localLines=['¡Dímelo! ¿Todo bien?','Voy al colmado y regreso ahora.','Ese tapón está fuerte hoy.','Buenas, ¿cómo va todo?','Parece que va a llover.','La guagua viene llena otra vez.','Nos vemos ahorita, cuídate.','¿Tú sabes dónde queda la parada?','Qué calor hace hoy, de verdad.','Voy a comprar algo de comer.','Con permiso, voy por aquí.','Hoy la calle está tranquila.','Déjame revisar un mensaje.','¡Qué lo qué! ¿Cómo está la cosa?'];
 function cityTalkTick(dt){
  npcGreetingCooldown=Math.max(0,npcGreetingCooldown-dt);
- voiceClock-=dt;talkRemaining=Math.max(0,talkRemaining-dt);if(talkRemaining<=0&&talkEl)talkEl.style.display='none';if(voiceClock>0)return;voiceClock=10+Math.random()*9;
+ talkRemaining=Math.max(0,talkRemaining-dt);if(talkRemaining<=0&&talkEl)talkEl.style.display='none';else if(talkRemaining>0)return;voiceClock-=dt;if(voiceClock>0)return;voiceClock=10+Math.random()*9;
  const pp=player.g.position,nearby=npcs.filter(n=>n.g.visible&&n.g.position.distanceTo(pp)<19);if(!nearby.length)return;
  const n=nearby[Math.floor(Math.random()*nearby.length)],hour=worldClock/3600;
  const contextual=n.routineState==='trabajando'?['Estoy en mi turno, vuelvo a lo mío.','Hoy el negocio está movido.','Tengo que terminar unas cosas del trabajo.']:n.routineState==='descanso'?['Estoy tomando un pequeño descanso.','Voy a buscar algo de comer.']:n.occupation==='motoconchista'?['¿Necesitas un motoconcho?','La calle está activa a esta hora.']:n.occupation==='estudiante'?['Voy para clases.','Tengo tareas pendientes.']:n.occupation==='cocinera'||n.occupation==='panadero'?['Hoy hay mucho que preparar.','El olor de la comida abre el apetito.']:localLines;
