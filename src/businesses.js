@@ -196,8 +196,7 @@ export function createBusinessSystem(T, scene, colliders) {
     // Cajas de refrescos y mercancía apilada junto a la entrada.
     for(let row=0;row<2;row++)for(let k=0;k<3;k++)
      cube(g,.48,.42,.42,[0x286b9b,0xc83e35,0x2d8b57][k],-3.25+k*.52,.25+row*.43,1.72);
-    // Bombillas y bandera dominicana sobre la entrada.    const flag=new T.Mesh(new T.PlaneGeometry(.72,.42),new T.MeshBasicMaterial({color:0xf4f0e5}));
-    flag.position.set(-.05,2.48,front+.13);g.add(flag);
+    // Bombillas y bandera dominicana sobre la entrada.    const flag=new T.Mesh(new T.PlaneGeometry(.72,.42),new T.MeshBasicMaterial({color:0xf4f0e5}));    flag.position.set(-.05,2.48,front+.13);g.add(flag);
     cube(g,.12,.12,.035,0x244b9a,-.2,2.48,front+.16);
     cube(g,.12,.12,.035,0xc83b42,.08,2.48,front+.16);
     // Dos sillas plásticas sencillas en el frente del colmado.
@@ -396,6 +395,57 @@ export function createBusinessSystem(T, scene, colliders) {
    for(let i=0;i<3;i++){
     cube(g,.42,.24,.42,0xd7c6a3,-3.05+i*.48,.18,front+.85);
     cube(g,.32,.045,.32,0xf0eee7,-3.05+i*.48,.32,front+.85);
+   }  }
+  if(data.id==='jugos'){
+   // Puesto de jugos naturales: frutas frescas, licuadoras y barra de preparación.
+   cube(g,5.35,.14,1.5,0x2e8b62,0,2.72,front+.62);
+   for(const px of [-2.5,2.5])cube(g,.12,2.55,.12,0x76513a,px,1.28,front+.58);
+   cube(g,4.35,.88,.82,0x805b3d,0,.55,front+.18);
+   cube(g,4.42,.1,.88,0xd8d2c2,0,1.05,front+.18);
+   // Licuadoras con bases, vasos transparentes y tapas.
+   for(let i=0;i<3;i++){
+    const x=-1.35+i*1.35;
+    cube(g,.48,.28,.42,0x65747a,x,1.22,-1.75);
+    const jar=new T.Mesh(new T.CylinderGeometry(.2,.15,.58,10,1,true),new T.MeshStandardMaterial({color:0x9ccbd0,transparent:true,opacity:.58,roughness:.2}));
+    jar.position.set(x,1.62,-1.75);g.add(jar);
+    cube(g,.42,.06,.42,0x343a3d,x,1.94,-1.75);
+    const juice=new T.Mesh(new T.CylinderGeometry(.145,.13,.22,10),material(data.products[i%data.products.length][2]));
+    juice.position.set(x,1.48,-1.75);g.add(juice);
+   }
+   // Cajones de frutas variadas para preparar los jugos.
+   for(let i=0;i<3;i++){
+    const x=-2.7+i*1.05;
+    cube(g,.92,.42,.72,0x9a7048,x,.28,-2.65);
+    for(let j=0;j<4;j++){
+     const fruit=new T.Mesh(new T.SphereGeometry(.17,8,7),material(data.products[(i+j)%data.products.length][2]));
+     fruit.position.set(x-.27+(j%2)*.38,.58,-2.8+Math.floor(j/2)*.3);g.add(fruit);
+    }
+   }
+   // Neverita para hielo, vasos apilados y dispensador.
+   cube(g,1.05,1.25,.82,0x6ca9b8,2.75,.68,-1.65);
+   cube(g,1.1,.1,.86,0xe3f0ee,2.75,1.35,-1.65);
+   for(let i=0;i<4;i++){
+    const cup=new T.Mesh(new T.CylinderGeometry(.11,.085,.22,10),material(0xf1eee5));
+    cup.position.set(1.95+i*.22,1.2,-.55);g.add(cup);
+   }
+   const dispenser=new T.Mesh(new T.CylinderGeometry(.22,.24,.58,12),material(0x70b9d1));
+   dispenser.position.set(2.85,.55,.55);g.add(dispenser);
+   // Pizarra de sabores y bombillas cálidas.
+   cube(g,1.75,1.02,.08,0x263b32,-2.55,2.02,front+.04);
+   for(let i=0;i<4;i++)cube(g,1.2,.055,.035,i%2?0xf0d28a:0xf3eee1,-2.55,2.3-i*.2,front+.085);
+   for(let i=0;i<3;i++){
+    cube(g,.035,.34,.035,0x34383a,-1.65+i*1.65,2.48,front+.4);
+    const bulb=new T.Mesh(new T.SphereGeometry(.11,8,6),lampMaterial);
+    bulb.position.set(-1.65+i*1.65,2.25,front+.4);g.add(bulb);
+   }
+   // Dos taburetes para clientes que esperan su pedido.
+   for(let i=0;i<2;i++){
+    const x=1.65+i*1.05,z=front+1.05;
+    cube(g,.48,.12,.48,0x39865b,x,.55,z);
+    cube(g,.07,.48,.07,0x34383a,x-.16,.28,z-.16);
+    cube(g,.07,.48,.07,0x34383a,x+.16,.28,z-.16);
+    cube(g,.07,.48,.07,0x34383a,x-.16,.28,z+.16);
+    cube(g,.07,.48,.07,0x34383a,x+.16,.28,z+.16);
    }
   }
   if(data.id==='jugos'){for(let i=0;i<2;i++){const m=new T.Mesh(new T.CylinderGeometry(.13,.16,.38,10),material(0x7eb8c7));m.position.set(2.4,.55,-1+i*.65);g.add(m)}}
