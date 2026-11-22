@@ -126,21 +126,67 @@ function swing(p,a){p.legL.rotation.x=a;p.legR.rotation.x=-a;p.armL.rotation.x=-
 let player=person(0xc8372d,0xc8372d,0xc68a5e,0x111111,true);
 player.g.position.set(0,0,32);scene.add(player.g);
 const skins=[0xc68a5e,0x8d5a3b,0xe0b08a,0x5e3a24],sh2=[0xffffff,0x2a9d8f,0xf4a261,0x6ec1e4,0xd97aa6,0xf2c14e];
-const npcs=[];for(let i=0;i<16;i++){const p=person(sh2[i%6],0x2b3a55,skins[i%4],0x1a1a1a,false);
+const npcs=[];for(let i=0;i<(mobileDevice?12:22);i++){const p=person(sh2[i%6],0x2b3a55,skins[i%4],0x1a1a1a,false);
  const lane=(Math.random()<.5?-1:1)*(2.4+Math.random()*3);p.g.position.set(lane,0,-60+Math.random()*120);
- p.dir=Math.random()<.5?-1:1;p.sp=1.3+Math.random()*1.2;p.t=Math.random()*9;scene.add(p.g);npcs.push(p);
+ p.dir=Math.random()<.5?-1:1;p.sp=.65+Math.random()*.55;p.t=Math.random()*9;p.pause=Math.random()*3;p.activity='walk';p.name=['Luis','María','José','Carla','Rafael','Yanelis','Pedro','Rosa','Miguel','Ana','Frank','Luz'][i%12];scene.add(p.g);npcs.push(p);
  p.mk=new T.Mesh(new T.SphereGeometry(.2,8,8),new T.MeshBasicMaterial({color:0x5fe0ff,depthTest:false}));p.mk.position.y=2.7;p.mk.renderOrder=9;p.mk.visible=false;p.g.add(p.mk)}
 let pedestrianRoutes=[];
 const traffic=[];
 function roadSegments(roads,minWidth=0){const out=[];for(const r of roads||[]){if(r.width<minWidth)continue;const p=r.points;for(let i=0;i+3<p.length;i+=2){const ax=p[i],az=p[i+1],bx=p[i+2],bz=p[i+3],len=Math.hypot(bx-ax,bz-az);if(len>24)out.push({ax,az,bx,bz,len,width:r.width})}}return out}
-function makeTrafficCar(color){const g=new T.Group();const body=new T.Mesh(new T.BoxGeometry(1.75,.62,3.5),mat(color));body.position.y=.72;body.castShadow=true;g.add(body);const cabin=new T.Mesh(new T.BoxGeometry(1.35,.68,1.65),mat(0x8bb5c9));cabin.position.set(0,1.32,-.15);cabin.castShadow=true;g.add(cabin);for(const x of [-.88,.88])for(const z of [-1.12,1.12]){const wh=new T.Mesh(new T.CylinderGeometry(.34,.34,.2,10),mat(0x171717));wh.rotation.z=Math.PI/2;wh.position.set(x,.38,z);g.add(wh)}const lampMat=new T.MeshBasicMaterial({color:0xfff0b0});for(const x of [-.55,.55]){const l=new T.Mesh(new T.BoxGeometry(.3,.16,.06),lampMat);l.position.set(x,.78,1.77);g.add(l)}scene.add(g);return g}
+function makeTrafficVehicle(type,color){
+ const g=new T.Group(),wheels=[];
+ if(type==='moto'){
+  const frame=new T.Mesh(new T.BoxGeometry(.28,.38,1.45),mat(color));frame.position.y=.82;g.add(frame);
+  const seat=new T.Mesh(new T.BoxGeometry(.55,.16,.62),mat(0x222222));seat.position.set(0,1.08,-.15);g.add(seat);
+  for(const z of [-.72,.72]){const wh=new T.Mesh(new T.CylinderGeometry(.3,.3,.14,10),mat(0x171717));wh.rotation.z=Math.PI/2;wh.position.set(0,.36,z);g.add(wh);wheels.push(wh)}
+  const rider=person(0x2a9d8f,0x222222,0x9a684b,0x171717,false);rider.g.scale.setScalar(.48);rider.g.position.y=.15;g.add(rider.g);
+ }else{
+  const van=type==='guagua',length=van?4.8:3.5,height=van?1.35:.62,width=van?1.9:1.75;
+  const body=new T.Mesh(new T.BoxGeometry(width,height,length),mat(color));body.position.y=van?1.05:.72;g.add(body);
+  const cabin=new T.Mesh(new T.BoxGeometry(van?1.72:1.35,van?1.05:.68,van?3.5:1.65),mat(0x8bb5c9));cabin.position.set(0,van?1.95:1.32,-.15);g.add(cabin);
+  if(type==='taxi'){const roof=new T.Mesh(new T.BoxGeometry(.55,.2,.35),mat(0xf2c14e));roof.position.set(0,1.78,-.15);g.add(roof);const stripe=new T.Mesh(new T.BoxGeometry(1.77,.13,3.52),mat(0xf1e9d8));stripe.position.y=.86;g.add(stripe)}
+  if(van)for(let z=-1.7;z<=1.7;z+=1.1){const win=new T.Mesh(new T.BoxGeometry(1.94,.55,.72),mat(0x47758b));win.position.set(0,2.05,z);g.add(win)}
+  for(const x of [-width/2-.03,width/2+.03])for(const z of [-length*.31,length*.31]){const wh=new T.Mesh(new T.CylinderGeometry(van?.38:.34,van?.38:.34,.2,10),mat(0x171717));wh.rotation.z=Math.PI/2;wh.position.set(x,.4,z);g.add(wh);wheels.push(wh)}
+ }
+ scene.add(g);g.userData.wheels=wheels;return g
+}
 function activateCityLife(roads){
  const segments=roadSegments(roads,4),sidewalks=segments.filter(s=>s.width>=5&&s.width<=14);
  if(!segments.length)return;
  pedestrianRoutes=npcs.map((n,i)=>{const s=sidewalks[i%Math.max(1,sidewalks.length)]||segments[i%segments.length];const dx=(s.bx-s.ax)/s.len,dz=(s.bz-s.az)/s.len,nx=-dz,nz=dx,side=i%2?1:-1,off=s.width/2+1.35;const a={x:s.ax+dx*s.len*.18+nx*off*side,z:s.az+dz*s.len*.18+nz*off*side},b={x:s.bx-dx*s.len*.18+nx*off*side,z:s.bz-dz*s.len*.18+nz*off*side};return{a,b}});
  npcs.forEach((n,i)=>{const r=pedestrianRoutes[i];n.route=r;n.progress=Math.random();n.dir=Math.random()<.5?1:-1;n.sp=.65+Math.random()*.45;n.g.visible=true;n.g.position.set(r.a.x+(r.b.x-r.a.x)*n.progress,0,r.a.z+(r.b.z-r.a.z)*n.progress)});
- const colors=[0xe76f51,0xf2c14e,0x2a9d8f,0xeeeeee,0x334455,0x9b5de5];
- for(let i=0;i<Math.min(7,segments.length);i++){const s=segments[(i*7+2)%segments.length],car=makeTrafficCar(colors[i%colors.length]);const lane=(i%2?1:-1)*Math.max(.7,s.width*.17);traffic.push({g:car,s,progress:(i/7+Math.random()*.08)%1,speed:3.2+(i%3)*1.15,lane})}
+ const colors=[0xe76f51,0xf2c14e,0x2a9d8f,0xeeeeee,0x334455,0x9b5de5,0xffffff,0xce1126],types=['car','taxi','moto','guagua'];
+ for(let i=0;i<Math.min(mobileDevice?7:12,segments.length);i++){const s=segments[(i*7+2)%segments.length],type=types[i%types.length],car=makeTrafficVehicle(type,colors[i%colors.length]);const lane=(i%2?1:-1)*Math.max(.7,Math.min(2,s.width*.17));traffic.push({g:car,s,progress:(i/12+Math.random()*.08)%1,speed:(type==='moto'?5.2:type==='guagua'?2.8:3.8)+(i%3)*.65,lane})}
+}
+
+
+let voiceUnlocked=false,voiceEnabled=true,voiceClock=8,talkRemaining=0;
+const talkEl=$('npc-talk'),soundBtn=$('sound-toggle');
+function speakNpc(line){
+ if(!voiceEnabled||!voiceUnlocked||!('speechSynthesis'in window)||!('SpeechSynthesisUtterance'in window))return;
+ try{const synth=window.speechSynthesis;synth.cancel();const u=new SpeechSynthesisUtterance(line);u.lang='es-DO';u.rate=.96;u.pitch=.98;u.volume=.78;const voices=synth.getVoices(),v=voices.find(v=>/^es-DO/i.test(v.lang))||voices.find(v=>/^es[-_]/i.test(v.lang));if(v)u.voice=v;synth.speak(u)}catch{}
+}
+const localLines=['¡Dímelo! ¿Todo bien?','Voy al colmado y regreso ahora.','Ese tapón está fuerte hoy.','Buenas, ¿cómo va todo?','Parece que va a llover.','La guagua viene llena otra vez.','Nos vemos ahorita, cuídate.','¿Tú sabes dónde queda la parada?','Qué calor hace hoy, de verdad.','Voy a comprar algo de comer.','Con permiso, voy por aquí.','Hoy la calle está tranquila.','Déjame revisar un mensaje.','¡Qué lo qué! ¿Cómo está la cosa?'];
+function cityTalkTick(dt){
+ voiceClock-=dt;talkRemaining=Math.max(0,talkRemaining-dt);if(talkRemaining<=0&&talkEl)talkEl.style.display='none';if(voiceClock>0)return;voiceClock=10+Math.random()*9;
+ const pp=player.g.position,nearby=npcs.filter(n=>n.g.visible&&n.g.position.distanceTo(pp)<19);if(!nearby.length)return;
+ const n=nearby[Math.floor(Math.random()*nearby.length)],line=localLines[Math.floor(Math.random()*localLines.length)];
+ if(talkEl){talkEl.textContent=n.name+': «'+line+'»';talkEl.style.display='block';talkRemaining=4.5} speakNpc(line);
+}
+
+
+function addInstitution(x,z,w,d,floors,name,kind){
+ const g=new T.Group();g.position.set(x,0,z);scene.add(g);const height=floors*3.4,wall=kind==='hospital'?0xe8eee9:0xf0d9a7,trim=kind==='hospital'?0x4a9b9a:0x2d5278;
+ const add=(ww,hh,dd,c,px,py,pz)=>box(ww,hh,dd,c,px,py,pz,true,g);
+ add(w,height,d,wall,0,height/2,0);add(w+.5,.45,d+.5,0x9b8061,0,height+.22,0);add(w+.8,.3,d+.8,trim,0,.15,0);
+ for(let f=0;f<floors;f++)for(let i=0;i<Math.max(2,Math.floor(w/3));i++){const px=-w/2+1.5+i*(w-3)/Math.max(1,Math.floor(w/3)-1);for(const side of [-1,1])add(1.05,1.25,.12,0x47758b,px,1.35+f*3.4,side*(d/2+.07))}
+ for(let i=0;i<Math.max(2,Math.floor(d/3));i++){const pz=-d/2+1.5+i*(d-3)/Math.max(1,Math.floor(d/3)-1);for(const side of [-1,1])add(.12,1.25,1.05,0x47758b,side*(w/2+.07),1.35,pz)}
+ add(2.1,2.6,.18,0x68452f,0,1.3,d/2+.12);
+ const board=document.createElement('canvas');board.width=512;board.height=96;const ctx=board.getContext('2d');ctx.fillStyle=kind==='hospital'?'#176c72':'#234b78';ctx.fillRect(0,0,512,96);ctx.fillStyle='#fff';ctx.font='bold 36px Trebuchet MS';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(name,256,48);
+ const sign=new T.Mesh(new T.PlaneGeometry(Math.min(w-1,9),1.7),new T.MeshBasicMaterial({map:new T.CanvasTexture(board)}));sign.position.set(0,height*.72,d/2+.22);g.add(sign);
+ if(kind==='hospital'){add(1.2,1.2,.2,0xce1126,0,height+.85,d/2+.25);add(.25,1.2,.2,0xce1126,0,height+.85,d/2+.26)}
+ else for(let i=-1;i<=1;i++)add(.12,2,.12,0x234b78,i*1.8,1,d/2+.35);
+ add(w+2,.18,2.5,0xbdb6a6,0,.09,d/2+2);colliders.push({x0:x-w/2,x1:x+w/2,z0:z-d/2,z1:z+d/2});
 }
 
 // Motoconcho
@@ -220,7 +266,7 @@ let saveClock=0;
 const beam=new T.Mesh(new T.CylinderGeometry(.7,.7,80,10,1,true),new T.MeshBasicMaterial({color:0x4361ee,transparent:true,opacity:.45,side:T.DoubleSide}));
 beam.position.set(0,40,-72);beam.visible=false;scene.add(beam);
 const FEED=['Radio: la policía cambió de canal.','Cámara 3 sin señal en la calle principal.','Interferencia detectada… alguien escucha.','Alerta: un dron sobrevuela la plaza.','Mensaje cifrado recibido del Planificador.'];
-function pick(r){const old=player.g.position.clone(),ro=player.g.rotation.y;
+function pick(r){voiceUnlocked=true;if(soundBtn)soundBtn.textContent=voiceEnabled?'Voces: activas':'Voces: apagadas';const old=player.g.position.clone(),ro=player.g.rotation.y;
  if(riding){riding=false;old.set(moto.position.x+1.6,0,moto.position.z)}
  old.y=0;scene.remove(player.g);
  player=person(r.col,r.col,0xc68a5e,0x111111,true);player.g.position.copy(old);player.g.rotation.y=ro;scene.add(player.g);
@@ -246,6 +292,8 @@ loadWorld(T,scene,colliders).then(w=>{if(!w)return;world=w;
  player.g.position.set(w.spawn[0],0,w.spawn[1]);moto.position.set(w.spawn[0]+2,0,w.spawn[1]);
  GOAL.set(w.goal[0],0,w.goal[1]);beam.position.set(w.goal[0],40,w.goal[1]);
  w.update(w.spawn[0],w.spawn[1]);
+ addInstitution(-33.2,6.3,12,16,3,'HOSPITAL MUNICIPAL','hospital');
+ addInstitution(-18.2,-38.7,12,16,2,'ESCUELA PÚBLICA','school');
  goalMark.position.set(GOAL.x,0,GOAL.z);goalMark.visible=true;
  if(saved&&Number.isFinite(saved.x)&&Number.isFinite(saved.z)){
    player.g.position.set(saved.x,0,saved.z);
@@ -291,8 +339,9 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
   player.g.position.set(moto.position.x,.3,moto.position.z);player.g.rotation.y=rot;player.g.rotation.z=moto.rotation.z;
   player.legL.rotation.x=player.legR.rotation.x=-1.2;player.armL.rotation.x=player.armR.rotation.x=-1.1}
  else{player.g.rotation.y=rot;player.g.rotation.z=0;swing(player,Math.sin(t*(sp>6?13:9))*Math.min(1,sp/5)*.9)}
- npcs.forEach(n=>{if(!n.route)return;const fr=abT>0&&role&&role.id==='inf'&&n.g.position.distanceTo(player.g.position)<25;if(!fr){n.progress+=n.dir*n.sp*dt/Math.max(1,Math.hypot(n.route.b.x-n.route.a.x,n.route.b.z-n.route.a.z));if(n.progress>1){n.progress=1;n.dir=-1}else if(n.progress<0){n.progress=0;n.dir=1}}const r=n.route;n.g.position.x=r.a.x+(r.b.x-r.a.x)*n.progress;n.g.position.z=r.a.z+(r.b.z-r.a.z)*n.progress;n.g.rotation.y=Math.atan2((r.b.x-r.a.x)*n.dir,(r.b.z-r.a.z)*n.dir);swing(n,fr?0:Math.sin((t+n.t)*8)*.42)});
- traffic.forEach(v=>{v.progress=(v.progress+v.speed*dt/v.s.len)%1;const s=v.s,dx=(s.bx-s.ax)/s.len,dz=(s.bz-s.az)/s.len,nx=-dz,nz=dx;v.g.position.set(s.ax+(s.bx-s.ax)*v.progress+nx*v.lane,0,s.az+(s.bz-s.az)*v.progress+nz*v.lane);v.g.rotation.y=Math.atan2(dx,dz)});
+ npcs.forEach(n=>{if(!n.route)return;const fr=abT>0&&role&&role.id==='inf'&&n.g.position.distanceTo(player.g.position)<25;n.pause=Math.max(0,n.pause-dt);if(!fr&&n.pause<=0){n.progress+=n.dir*n.sp*dt/Math.max(1,Math.hypot(n.route.b.x-n.route.a.x,n.route.b.z-n.route.a.z));if(n.progress>1){n.progress=1;n.dir=-1;n.pause=1+Math.random()*2}else if(n.progress<0){n.progress=0;n.dir=1;n.pause=1+Math.random()*2}if(Math.random()<.0015){n.pause=2+Math.random()*3;n.activity=Math.random()<.5?'phone':'rest'}}const r=n.route;n.g.position.x=r.a.x+(r.b.x-r.a.x)*n.progress;n.g.position.z=r.a.z+(r.b.z-r.a.z)*n.progress;n.g.rotation.y=Math.atan2((r.b.x-r.a.x)*n.dir,(r.b.z-r.a.z)*n.dir);const idle=n.pause>0;swing(n,idle?(n.activity==='phone'?.65:0):Math.sin((t+n.t)*8)*.42);if(idle&&n.activity==='phone')n.armR.rotation.x=-1.35});
+ traffic.forEach(v=>{v.progress=(v.progress+v.speed*dt/v.s.len)%1;const s=v.s,dx=(s.bx-s.ax)/s.len,dz=(s.bz-s.az)/s.len,nx=-dz,nz=dx;v.g.position.set(s.ax+(s.bx-s.ax)*v.progress+nx*v.lane,0,s.az+(s.bz-s.az)*v.progress+nz*v.lane);v.g.rotation.y=Math.atan2(dx,dz);v.g.userData.wheels?.forEach(w=>w.rotation.x+=v.speed*dt*1.7)});
+ cityTalkTick(dt);
  if(role&&performance.now()-lastDrag>1200&&(riding?Math.abs(spd)>1:(sp>.8&&iz<.5)))yaw+=angD(yaw,rot+Math.PI)*(1-Math.exp(-(riding?3:1.2)*dt));
  cam.fov+=((60+(riding?Math.min(18,Math.abs(spd)*.7):0))-cam.fov)*(1-Math.exp(-4*dt));cam.updateProjectionMatrix();
  const pp=player.g.position,dist=riding?9:6.5;
