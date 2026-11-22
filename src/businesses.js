@@ -238,6 +238,44 @@ export function createBusinessSystem(T, scene, colliders) {
    for(let i=0;i<2;i++)cube(g,.48,.42,.48,i?0x397b50:0x9a7048,-3.05,.23,front+.25+i*.52);
   }
   if(data.id==='comedor'||data.id==='frituras'||data.id==='empanadas'){for(let i=0;i<2;i++){cube(g,1.05,.12,.72,0x8b6348,-2.5,.65,.2+i*1.25);for(const xx of [-.4,.4])cube(g,.12,.55,.12,0x54463b,-2.5+xx,.32,.2+i*1.25)}}
+  if(data.id==='comedor'){
+   // Cocina de comedor dominicano: estufa, ollas y área de preparación.
+   cube(g,2.45,.92,.92,0x9a9da0,2.45,.55,-2.12);
+   cube(g,2.5,.12,.98,0x343a3d,2.45,1.08,-2.12);
+   for(let i=0;i<4;i++){
+    const burner=new T.Mesh(new T.CylinderGeometry(.22,.22,.055,12),material(0x17191b));
+    burner.position.set(1.55+(i%2)*.82,1.17,-2.4+Math.floor(i/2)*.55);g.add(burner);
+   }
+   for(let i=0;i<3;i++){
+    const pot=new T.Mesh(new T.CylinderGeometry(.25,.29,.3,12),material([0xb9c0c2,0x777f83,0xc4c9c9][i]));
+    pot.position.set(1.65+i*.72,1.38,-2.12);g.add(pot);
+    cube(g,.48,.045,.08,0x34383a,1.65+i*.72,1.55,-2.12);
+   }
+   // Mostrador de servicio y bandejas del menú del día.
+   cube(g,2.75,.9,.72,0x8b6348,.05,.58,-.65);
+   cube(g,2.82,.1,.78,0xd5d0c5,.05,1.08,-.65);
+   for(let i=0;i<3;i++){
+    cube(g,.68,.08,.5,0xb9c4c4,-.82+i*.88,1.19,-.65);
+    const food=new T.Mesh(new T.SphereGeometry(.2,10,7),material([0xd8a044,0x8b4a2d,0x6e9b43][i]));
+    food.position.set(-.82+i*.88,1.34,-.65);g.add(food);
+   }
+   // Menú mural y cartel de precios, sin texto pequeño ilegible.
+   cube(g,1.65,1.12,.09,0x263b32,-2.75,2.05,-3.12);
+   for(let i=0;i<4;i++)cube(g,1.18,.055,.035,[0xf0d28a,0xe7e1cc,0xe7e1cc,0xf0d28a][i],-2.75,2.42-i*.23,-3.055);
+   // Nevera de bebidas y dispensador de agua junto al área de clientes.
+   cube(g,.82,1.75,.78,0x5c9eaf,3.45,.92,.25);
+   cube(g,.88,.12,.82,0xe5eeee,3.45,1.84,.25);
+   for(let i=0;i<3;i++)cube(g,.13,.48,.035,[0xd84c3e,0xe7c34e,0x4388b5][i],3.2+i*.24,1.05,.66);
+   const water=new T.Mesh(new T.CylinderGeometry(.22,.24,.58,10),material(0x66aeca));
+   water.position.set(3.35,.48,1.55);g.add(water);
+   // Sillas de comedor a la derecha de las mesas.
+   for(let i=0;i<2;i++){
+    const cx=1.55+i*1.25,cz=.95;
+    cube(g,.58,.1,.58,0x397b55,cx,.48,cz);
+    cube(g,.58,.65,.1,0x397b55,cx,.82,cz+.24);
+    for(const dx of [-.22,.22])for(const dz of [-.22,.22])cube(g,.065,.45,.065,0x397b55,cx+dx,.23,cz+dz);
+   }
+  }
   if(data.id==='jugos'){for(let i=0;i<2;i++){const m=new T.Mesh(new T.CylinderGeometry(.13,.16,.38,10),material(0x7eb8c7));m.position.set(2.4,.55,-1+i*.65);g.add(m)}}
   if(data.id==='panaderia'||data.id==='reposteria'){cube(g,1.25,1.35,.9,0x51433a,2.55,.8,-1.55);cube(g,.9,.7,.08,0xe4b66d,2.55,.85,-1.05);for(let i=0;i<3;i++)cube(g,.9,.1,.5,0xb18a5b,-2.7,.5+i*.42,-1.2)}
   if(data.id==='carniceria'||data.id==='pescaderia'){cube(g,1.65,.9,.9,0x9bbbc1,2.5,.55,-1.4);cube(g,1.7,.12,.94,0xeaf4f4,2.5,1.03,-1.4);for(let i=0;i<3;i++){const m=new T.Mesh(new T.SphereGeometry(.2,8,6),material(data.products[i][2]));m.position.set(2.15+i*.35,1.13,-1.4);g.add(m)}}
