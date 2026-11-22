@@ -36,6 +36,7 @@ export async function loadWorld(T, scene, colliders) {
     c[kind].push(f);
   };
   let maxX = 0, maxZ = 0;
+  const roads = [];
   const track = p => {
     for (let i = 0; i + 1 < p.length; i += 2) {
       maxX = Math.max(maxX, Math.abs(p[i]));
@@ -44,6 +45,7 @@ export async function loadWorld(T, scene, colliders) {
   };
 
   d.r.forEach(([w, p]) => {
+    roads.push({ width: w, points: p });
     for (let i = 0; i + 3 < p.length; i += 2) {
       const segment = [p[i], p[i + 1], p[i + 2], p[i + 3]];
       const center = [(p[i] + p[i + 2]) / 2, (p[i + 1] + p[i + 3]) / 2];
@@ -166,5 +168,5 @@ export async function loadWorld(T, scene, colliders) {
     }
   }
 
-  return { spawn: d.spawn, goal: d.goal, lim: { x: maxX + 40, z: maxZ + 40 }, update };
+  return { spawn: d.spawn, goal: d.goal, roads, lim: { x: maxX + 40, z: maxZ + 40 }, update };
 }
