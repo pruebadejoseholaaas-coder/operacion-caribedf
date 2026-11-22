@@ -1,6 +1,6 @@
 // Primera fase de la economía urbana dominicana: 10 comercios con interiores y actividad.
 const CATALOG = [
- {id:'colmado',name:'Colmado El Buen Vecino',kind:'COLMADO',open:6,close:23,wall:0xe9b75e,trim:0xc8372d,task:'organiza productos',products:[['Arroz (libra)',35,0xe8dfc8],['Habichuelas',65,0x8b4a2d],['Aceite',95,0xe4b93c],['Jugo',45,0xe76f51]],detail:'Neveras, sacos, latas, bebidas y sillas plásticas'},
+ {id:'colmado',name:'Colmado El Buen Vecino',kind:'COLMADO',open:6,close:23,wall:0x78b982,trim:0x176b43,task:'organiza productos',products:[['Arroz (libra)',35,0xe8dfc8],['Habichuelas',65,0x8b4a2d],['Aceite',95,0xe4b93c],['Jugo',45,0xe76f51]],detail:'Colmado de barrio con estantes surtidos, neveras, botellones de agua, sacos y sillas plásticas'},
  {id:'ventorrillo',name:'Ventorrillo Doña Nena',kind:'VENTORRILLO',open:6,close:21,wall:0xf0c9a0,trim:0x2a9d8f,task:'atiende el mostrador',products:[['Plátanos',20,0x8da83c],['Huevos',12,0xf0e5ca],['Leche',75,0xf1f1e9],['Galletas',25,0xc99b62]],detail:'Mostrador frontal, zinc, cajas y mercancía básica'},
  {id:'comedor',name:'Comedor Sazón de Casa',kind:'COMEDOR',open:7,close:16,wall:0xf0dfbf,trim:0x2a7f62,task:'prepara el almuerzo',products:[['Plato del día',220,0xd59b3d],['Habichuelas',80,0x8b4a2d],['Jugo natural',90,0xe9a52e],['Agua',30,0x6ec1e4]],detail:'Mesas, cocina, menú y platos preparados'},
  {id:'frituras',name:'Frituras La Esquina',kind:'FRITURAS',open:16,close:2,wall:0xf4bd63,trim:0xc8372d,task:'prepara frituras',products:[['Yaniqueque',35,0xe5b34a],['Empanada',60,0xc88742],['Tostones',75,0x9fbd48],['Quipe',65,0x98634a]],detail:'Freidora, carrito, vitrina y bombillas'},
@@ -137,7 +137,7 @@ export function createBusinessSystem(T, scene, colliders) {
   for(const px of [-W/2+.12,W/2-.12])cube(g,.22,2.8,.22,data.trim,px,1.42,front);
   cube(g,2.25,1.05,.1,0x5c4637,0,.55,front-.25);
   for(const px of [-2.45,2.45]){cube(g,1.75,1.25,.08,0x8bc3d2,px,1.45,front-.12);cube(g,1.85,.08,.12,0xf3e6c9,px,2.12,front-.12)}
-  const sign=new T.Mesh(new T.PlaneGeometry(6.5,1.12),new T.MeshBasicMaterial({map:signTexture(data.kind,data.trim)}));sign.position.set(0,3.65,front+.06);g.add(sign);
+  const sign=new T.Mesh(new T.PlaneGeometry(6.5,1.12),new T.MeshBasicMaterial({map:signTexture(data.id==='colmado'?'COLMADO EL BUEN VECINO':data.kind,data.trim)}));sign.position.set(0,3.65,front+.06);g.add(sign);
   // Estanterías y productos visibles.
   for(let row=0;row<2;row++){cube(g,2.1,.16,.65,0x805b3d,-2.65,.7+row*1.0,-2.45);for(let k=0;k<5;k++)cube(g,.24,.38,.28,data.products[k%data.products.length][2],-3.42+k*.38,1+row*.95,-2.42)}
   for(let k=0;k<4;k++){const p=data.products[k];if(data.id==='jugos'||data.id==='carniceria'||data.id==='pescaderia'){const m=new T.Mesh(new T.SphereGeometry(.25,9,7),material(p[2]));m.position.set(-1.45+k*.55,.55, -2.25);g.add(m)}else cube(g,.34,.48,.34,p[2],-1.45+k*.55,.5,-2.25)}
@@ -145,7 +145,57 @@ export function createBusinessSystem(T, scene, colliders) {
   cube(g,.42,.12,.38,0x282b2e,.62,1.14,.55);
   cube(g,.2,.1,.2,0x4b9b62,.62,1.22,.55);
   // Equipamiento particular por categoría.
-  if(data.id==='colmado'||data.id==='ventorrillo'){for(let i=0;i<2;i++){cube(g,.9,1.9,.72,0x4c9db0,2.65,1,-1.2+i*1.15);cube(g,.92,.12,.74,0xd8e8ed,2.65,1.96,-1.2+i*1.15)}for(let i=0;i<3;i++)cube(g,.55,.65,.55,0xd8c5a1,-2.8,.45,1.8+i*.58)}
+  if(data.id==='colmado'){
+    // Neveras comerciales junto a la pared derecha.
+    for(let i=0;i<2;i++){
+     cube(g,.92,2.05,.78,0x3c8791,2.62,1.05,-1.35+i*1.12);
+     cube(g,.78,1.82,.045,0x9ccbd0,2.62,1.08,-.94+i*1.12);
+     cube(g,.82,.08,.08,0xe9f4ed,2.62,1.96,-.91+i*1.12);
+    }
+    // Estanterías altas y muy surtidas, como en un colmado de barrio.
+    for(let row=0;row<3;row++){
+     cube(g,2.25,.13,.58,0x805b3d,-2.65,.52+row*.72,-2.38);
+     for(let k=0;k<7;k++){
+      const colors=[0xd94a36,0xe5b83b,0x2f9b70,0x3d78ae,0xe9dfc5,0xb75d91,0x9b6743];
+      cube(g,.22,.42,.3,colors[(k+row)%colors.length],-3.48+k*.28,.78+row*.72,-2.38);
+     }
+    }
+    // Sacos de arroz y habichuelas cerca del mostrador.
+    for(let i=0;i<3;i++){
+     const sack=new T.Mesh(new T.CylinderGeometry(.28,.34,.78,10),material([0xd8c5a1,0xb58b61,0x9a7652][i]));
+     sack.position.set(-3.05+i*.68,.56,.45);g.add(sack);
+     cube(g,.48,.08,.48,0xeee3c9,-3.05+i*.68,.98,.45);
+    }
+    // Botellones azules de agua en un pequeño anaquel metálico.
+    for(let row=0;row<2;row++){
+     cube(g,1.42,.08,.62,0x35464a,2.55,.48+row*1.05,1.62);
+     for(let k=0;k<3;k++){
+      const jug=new T.Mesh(new T.CylinderGeometry(.22,.27,.68,12),material(0x438caa));
+      jug.position.set(2.12+k*.43,.86+row*1.05,1.62);g.add(jug);
+      const cap=new T.Mesh(new T.CylinderGeometry(.09,.09,.09,8),material(0xd9e7dc));
+      cap.position.set(2.12+k*.43,1.23+row*1.05,1.62);g.add(cap);
+     }
+    }
+    // Reja de hierro y mostrador frontal de atención.
+    for(let i=0;i<9;i++)cube(g,.055,1.9,.055,0x25292a,-3.45+i*.24,1.25,front+.08);
+    cube(g,2.25,.09,.12,0x25292a,-2.49,2.18,front+.08);
+    // Cajas de refrescos y mercancía apilada junto a la entrada.
+    for(let row=0;row<2;row++)for(let k=0;k<3;k++)
+     cube(g,.48,.42,.42,[0x286b9b,0xc83e35,0x2d8b57][k],-3.25+k*.52,.25+row*.43,1.72);
+    // Bombillas y bandera dominicana sobre la entrada.
+    const flag=new T.Mesh(new T.PlaneGeometry(.72,.42),new T.MeshBasicMaterial({color:0xf4f0e5}));
+    flag.position.set(-.05,2.48,front+.13);g.add(flag);
+    cube(g,.12,.12,.035,0x244b9a,-.2,2.48,front+.16);
+    cube(g,.12,.12,.035,0xc83b42,.08,2.48,front+.16);
+    // Dos sillas plásticas sencillas en el frente del colmado.
+    for(let i=0;i<2;i++){
+     const cx=-1.25+i*1.45,cz=front+.95;
+     cube(g,.62,.12,.62,0xe8e8df,cx,.48,cz);
+     cube(g,.62,.72,.12,0xe8e8df,cx,.86,cz+.25);
+     for(const dx of [-.24,.24])for(const dz of [-.23,.23])cube(g,.07,.48,.07,0xe8e8df,cx+dx,.24,cz+dz);
+    }
+   }
+   if(data.id==='ventorrillo'){for(let i=0;i<2;i++){cube(g,.9,1.9,.72,0x4c9db0,2.65,1,-1.2+i*1.15);cube(g,.92,.12,.74,0xd8e8ed,2.65,1.96,-1.2+i*1.15)}for(let i=0;i<3;i++)cube(g,.55,.65,.55,0xd8c5a1,-2.8,.45,1.8+i*.58)}
   if(data.id==='comedor'||data.id==='frituras'||data.id==='empanadas'){for(let i=0;i<2;i++){cube(g,1.05,.12,.72,0x8b6348,-2.5,.65,.2+i*1.25);for(const xx of [-.4,.4])cube(g,.12,.55,.12,0x54463b,-2.5+xx,.32,.2+i*1.25)}}
   if(data.id==='jugos'){for(let i=0;i<2;i++){const m=new T.Mesh(new T.CylinderGeometry(.13,.16,.38,10),material(0x7eb8c7));m.position.set(2.4,.55,-1+i*.65);g.add(m)}}
   if(data.id==='panaderia'||data.id==='reposteria'){cube(g,1.25,1.35,.9,0x51433a,2.55,.8,-1.55);cube(g,.9,.7,.08,0xe4b66d,2.55,.85,-1.05);for(let i=0;i<3;i++)cube(g,.9,.1,.5,0xb18a5b,-2.7,.5+i*.42,-1.2)}
