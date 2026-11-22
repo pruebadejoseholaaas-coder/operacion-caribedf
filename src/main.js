@@ -128,9 +128,11 @@ function swing(p,a){p.legL.rotation.x=a;p.legR.rotation.x=-a;p.armL.rotation.x=-
 let player=person(0xc8372d,0xc8372d,0xc68a5e,0x111111,true);
 player.g.position.set(0,0,32);scene.add(player.g);
 const skins=[0xc68a5e,0x8d5a3b,0xe0b08a,0x5e3a24],sh2=[0xffffff,0x2a9d8f,0xf4a261,0x6ec1e4,0xd97aa6,0xf2c14e];
+const residentNames=['Luis','María','José','Carla','Rafael','Yanelis','Pedro','Rosa','Miguel','Ana','Frank','Luz','Ramón','Diana','Joel','Carmen','Víctor','Altagracia','Darío','Nathalia','Manuel','Kiara'];
+const residentJobs=['dependiente','maestra','motoconchista','enfermera','mecánico','estilista','estudiante','cocinera','repartidor','vendedora','electricista','costurera','panadero','contable','barbero','agricultora','taxista','secretaria','carpintero','diseñadora','guardia','emprendedora'];
 const npcs=[];for(let i=0;i<(mobileDevice?12:22);i++){const p=person(sh2[i%6],0x2b3a55,skins[i%4],0x1a1a1a,false);
  const lane=(Math.random()<.5?-1:1)*(2.4+Math.random()*3);p.g.position.set(lane,0,-60+Math.random()*120);
- p.dir=Math.random()<.5?-1:1;p.sp=.65+Math.random()*.55;p.t=Math.random()*9;p.pause=Math.random()*3;p.activity='walk';p.name=['Luis','María','José','Carla','Rafael','Yanelis','Pedro','Rosa','Miguel','Ana','Frank','Luz'][i%12];scene.add(p.g);npcs.push(p);
+ p.dir=Math.random()<.5?-1:1;p.sp=.65+Math.random()*.55;p.t=Math.random()*9;p.pause=Math.random()*3;p.activity='walk';p.name=residentNames[i];p.occupation=residentJobs[i];p.shiftStart=6+(i%5);p.shiftEnd=14+(i%5);p.sleepStart=22+(i%2);p.sleepEnd=5+(i%2);p.personality=['amable','reservado','alegre','tranquilo'][i%4];p.social=.35+(i%5)*.12;p.trust=0;p.mood='normal';p.routineState='libre';scene.add(p.g);npcs.push(p);
  p.mk=new T.Mesh(new T.SphereGeometry(.2,8,8),new T.MeshBasicMaterial({color:0x5fe0ff,depthTest:false}));p.mk.position.y=2.7;p.mk.renderOrder=9;p.mk.visible=false;p.g.add(p.mk)}
 let pedestrianRoutes=[];
 const traffic=[];
@@ -172,7 +174,9 @@ const localLines=['¡Dímelo! ¿Todo bien?','Voy al colmado y regreso ahora.','E
 function cityTalkTick(dt){
  voiceClock-=dt;talkRemaining=Math.max(0,talkRemaining-dt);if(talkRemaining<=0&&talkEl)talkEl.style.display='none';if(voiceClock>0)return;voiceClock=10+Math.random()*9;
  const pp=player.g.position,nearby=npcs.filter(n=>n.g.visible&&n.g.position.distanceTo(pp)<19);if(!nearby.length)return;
- const n=nearby[Math.floor(Math.random()*nearby.length)],line=localLines[Math.floor(Math.random()*localLines.length)];
+ const n=nearby[Math.floor(Math.random()*nearby.length)],hour=worldClock/3600;
+ const contextual=n.routineState==='trabajando'?['Estoy en mi turno, vuelvo a lo mío.','Hoy el negocio está movido.','Tengo que terminar unas cosas del trabajo.']:n.routineState==='descanso'?['Estoy tomando un pequeño descanso.','Voy a buscar algo de comer.']:n.occupation==='motoconchista'?['¿Necesitas un motoconcho?','La calle está activa a esta hora.']:n.occupation==='estudiante'?['Voy para clases.','Tengo tareas pendientes.']:n.occupation==='cocinera'||n.occupation==='panadero'?['Hoy hay mucho que preparar.','El olor de la comida abre el apetito.']:localLines;
+ const line=contextual[Math.floor(Math.random()*contextual.length)];
  if(talkEl){talkEl.textContent=n.name+': «'+line+'»';talkEl.style.display='block';talkRemaining=4.5} speakNpc(line);
 }
 
@@ -343,7 +347,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
   player.g.position.set(moto.position.x,.3,moto.position.z);player.g.rotation.y=rot;player.g.rotation.z=moto.rotation.z;
   player.legL.rotation.x=player.legR.rotation.x=-1.2;player.armL.rotation.x=player.armR.rotation.x=-1.1}
  else{player.g.rotation.y=rot;player.g.rotation.z=0;swing(player,Math.sin(t*(sp>6?13:9))*Math.min(1,sp/5)*.9)}
- npcs.forEach(n=>{if(!n.route)return;const fr=abT>0&&role&&role.id==='inf'&&n.g.position.distanceTo(player.g.position)<25;n.pause=Math.max(0,n.pause-dt);if(!fr&&n.pause<=0){n.progress+=n.dir*n.sp*dt/Math.max(1,Math.hypot(n.route.b.x-n.route.a.x,n.route.b.z-n.route.a.z));if(n.progress>1){n.progress=1;n.dir=-1;n.pause=1+Math.random()*2}else if(n.progress<0){n.progress=0;n.dir=1;n.pause=1+Math.random()*2}if(Math.random()<.0015){n.pause=2+Math.random()*3;n.activity=Math.random()<.5?'phone':'rest'}}const r=n.route;n.g.position.x=r.a.x+(r.b.x-r.a.x)*n.progress;n.g.position.z=r.a.z+(r.b.z-r.a.z)*n.progress;n.g.rotation.y=Math.atan2((r.b.x-r.a.x)*n.dir,(r.b.z-r.a.z)*n.dir);const idle=n.pause>0;swing(n,idle?(n.activity==='phone'?.65:0):Math.sin((t+n.t)*8)*.42);if(idle&&n.activity==='phone')n.armR.rotation.x=-1.35});
+ npcs.forEach(n=>{if(!n.route)return;const hour=worldClock/3600,sleeping=n.sleepStart>n.sleepEnd?(hour>=n.sleepStart||hour<n.sleepEnd):(hour>=n.sleepStart&&hour<n.sleepEnd);n.routineState=sleeping?'durmiendo':hour>=n.shiftStart&&hour<n.shiftEnd?'trabajando':hour>=12&&hour<14?'descanso':'libre';n.g.visible=!sleeping;if(sleeping)return;const fr=abT>0&&role&&role.id==='inf'&&n.g.position.distanceTo(player.g.position)<25;n.pause=Math.max(0,n.pause-dt);const routineSpeed=n.routineState==='trabajando'?1.18:n.routineState==='descanso'?.72:.9;if(!fr&&n.pause<=0){n.progress+=n.dir*n.sp*routineSpeed*dt/Math.max(1,Math.hypot(n.route.b.x-n.route.a.x,n.route.b.z-n.route.a.z));if(n.progress>1){n.progress=1;n.dir=-1;n.pause=1+Math.random()*2}else if(n.progress<0){n.progress=0;n.dir=1;n.pause=1+Math.random()*2}if(Math.random()<.0015){n.pause=2+Math.random()*3;n.activity=Math.random()<.5?'phone':'rest'}}const r=n.route;n.g.position.x=r.a.x+(r.b.x-r.a.x)*n.progress;n.g.position.z=r.a.z+(r.b.z-r.a.z)*n.progress;n.g.rotation.y=Math.atan2((r.b.x-r.a.x)*n.dir,(r.b.z-r.a.z)*n.dir);const idle=n.pause>0||n.routineState==='descanso';swing(n,idle?(n.activity==='phone'?.65:0):Math.sin((t+n.t)*8)*.42);if(idle&&n.activity==='phone')n.armR.rotation.x=-1.35});
  traffic.forEach(v=>{v.progress=(v.progress+v.speed*dt/v.s.len)%1;const s=v.s,dx=(s.bx-s.ax)/s.len,dz=(s.bz-s.az)/s.len,nx=-dz,nz=dx;v.g.position.set(s.ax+(s.bx-s.ax)*v.progress+nx*v.lane,0,s.az+(s.bz-s.az)*v.progress+nz*v.lane);v.g.rotation.y=Math.atan2(dx,dz);v.g.userData.wheels?.forEach(w=>w.rotation.x+=v.speed*dt*1.7)});
  cityTalkTick(dt);
  businessSystem?.update(dt,player.g.position,worldClock);
