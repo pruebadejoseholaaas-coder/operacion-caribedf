@@ -10,9 +10,46 @@ renderer.shadowMap.enabled=!mobileDevice;
 document.body.prepend(renderer.domElement);
 const scene=new T.Scene();scene.background=new T.Color(0x9cd3f0);scene.fog=new T.Fog(0x9cd3f0,45,150);
 const cam=new T.PerspectiveCamera(60,1,.1,300);
-scene.add(new T.HemisphereLight(0xffffff,0x998877,.95));
+const hemi=new T.HemisphereLight(0xffffff,0x998877,.95);scene.add(hemi);
 const sun=new T.DirectionalLight(0xfff0d0,1.1);sun.position.set(30,50,20);sun.castShadow=true;sun.shadow.mapSize.set(mobileDevice?512:1024,mobileDevice?512:1024);
 const sc=sun.shadow.camera;sc.left=sc.bottom=-40;sc.right=sc.top=40;sc.far=150;scene.add(sun,sun.target);
+
+// Tiempo dinámico: un día completo dura 12 minutos reales.
+const DAY_LENGTH=720;
+let worldClock=8*3600,weatherIndex=0,weatherElapsed=0;
+const weatherTypes=[
+ {id:'soleado',label:'Soleado',fog:150,light:1,sky:0x9cd3f0},
+ {id:'nublado',label:'Nublado',fog:125,light:.78,sky:0x899eae},
+ {id:'lluvia',label:'Lluvia',fog:95,light:.62,sky:0x687b8b},
+ {id:'niebla',label:'Niebla',fog:58,light:.68,sky:0x9aa7a9}
+];
+const skyDay=new T.Color(0x9cd3f0),skyNight=new T.Color(0x101a31),skyDawn=new T.Color(0xe9a078),skyNow=new T.Color();
+const rainCount=mobileDevice?100:260,rainPositions=new Float32Array(rainCount*3);
+for(let i=0;i<rainCount;i++){rainPositions[i*3]=(Math.random()-.5)*42;rainPositions[i*3+1]=Math.random()*24;rainPositions[i*3+2]=(Math.random()-.5)*42}
+const rainGeo=new T.BufferGeometry();rainGeo.setAttribute('position',new T.BufferAttribute(rainPositions,3));
+const rain=new T.Points(rainGeo,new T.PointsMaterial({color:0xc9e5f5,size:mobileDevice?.075:.1,transparent:true,opacity:.7,depthWrite:false}));
+rain.visible=false;scene.add(rain);
+function formatClock(sec){const h=Math.floor(sec/3600)%24,m=Math.floor(sec%3600/60);return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')}
+function updateEnvironment(dt,px,pz){
+ worldClock=(worldClock+dt*86400/DAY_LENGTH)%86400;
+ weatherElapsed+=dt;if(weatherElapsed>165){weatherElapsed=0;weatherIndex=(weatherIndex+1)%weatherTypes.length}
+ const hour=worldClock/3600,phase=Math.max(0,Math.min(1,(Math.sin((hour-6)/12*Math.PI)+.08)/1.08));
+ const dawn=Math.max(0,1-Math.abs(hour-6.5)/1.8,1-Math.abs(hour-18)/1.8);
+ const weather=weatherTypes[weatherIndex],night=1-phase;
+ skyNow.copy(skyNight).lerp(skyDay,phase);if(dawn>0)skyNow.lerp(skyDawn,dawn*.42);
+ skyNow.lerp(new T.Color(weather.sky),weatherIndex===0?0:.48);
+ scene.background.copy(skyNow);scene.fog.color.copy(skyNow);
+ scene.fog.near=weatherIndex===3?8:weatherIndex===2?28:45;
+ scene.fog.far=weather.fog;
+ sun.intensity=(.12+phase*1.12)*weather.light;
+ sun.color.setRGB(.72+.28*phase, .78+.22*phase, .95+.05*phase);
+ hemi.intensity=.2+phase*.78;
+ sun.position.set(px+Math.cos(worldClock/86400*Math.PI*2)*45,12+phase*65,pz+Math.sin(worldClock/86400*Math.PI*2)*45);
+ rain.visible=weatherIndex===2;
+ if(rain.visible){const a=rain.geometry.attributes.position;for(let i=0;i<rainCount;i++){let y=a.array[i*3+1]-.42*dt*60;if(y<0){y=18+Math.random()*6;a.array[i*3]=px+(Math.random()-.5)*42;a.array[i*3+2]=pz+(Math.random()-.5)*42}a.array[i*3+1]=y;a.array[i*3]+=.025*dt*60}a.needsUpdate=true;rain.position.set(0,0,0)}
+ const state=$('world-state');if(state)state.textContent=formatClock(worldClock)+' · '+weather.label;
+}
+
 const mats={},mat=c=>mats[c]||(mats[c]=new T.MeshLambertMaterial({color:c}));
 function box(w,h,l,c,x,y,z,sh=true,par=scene){const m=new T.Mesh(new T.BoxGeometry(w,h,l),mat(c));m.position.set(x,y,z);m.castShadow=sh;m.receiveShadow=true;par.add(m);return m}
 const colliders=[];
@@ -163,7 +200,10 @@ goalBeacon.position.y=2.7;goalMark.add(goalBeacon);goalMark.visible=false;scene.
 const SAVE_KEY='operacion-caribe-save-v1';
 function readSave(){try{return JSON.parse(localStorage.getItem(SAVE_KEY)||'null')}catch{return null}}
 let saved=readSave(),missionDone=!!saved?.missionDone;
-function saveGame(){try{const p=player.g.position;localStorage.setItem(SAVE_KEY,JSON.stringify({x:p.x,z:p.z,mx:moto.position.x,mz:moto.position.z,rot,yaw,pitch,roleId:role?.id||null,missionDone}))}catch{}}
+if(saved&&Number.isFinite(saved.worldClock))worldClock=((saved.worldClock%86400)+86400)%86400;
+if(saved&&Number.isInteger(saved.weatherIndex))weatherIndex=Math.max(0,Math.min(weatherTypes.length-1,saved.weatherIndex));
+if(saved&&Number.isFinite(saved.weatherElapsed))weatherElapsed=Math.max(0,saved.weatherElapsed);
+function saveGame(){try{const p=player.g.position;localStorage.setItem(SAVE_KEY,JSON.stringify({x:p.x,z:p.z,mx:moto.position.x,mz:moto.position.z,rot,yaw,pitch,roleId:role?.id||null,missionDone,worldClock,weatherIndex,weatherElapsed}))}catch{}}
 let saveClock=0;
 const beam=new T.Mesh(new T.CylinderGeometry(.7,.7,80,10,1,true),new T.MeshBasicMaterial({color:0x4361ee,transparent:true,opacity:.45,side:T.DoubleSide}));
 beam.position.set(0,40,-72);beam.visible=false;scene.add(beam);
@@ -245,7 +285,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
  const pp=player.g.position,dist=riding?9:6.5;
  const tx=pp.x+Math.sin(yaw)*Math.cos(pitch)*dist,ty=pp.y+1.7+Math.sin(pitch)*dist,tz=pp.z+Math.cos(yaw)*Math.cos(pitch)*dist;
  cam.position.lerp(new T.Vector3(tx,ty,tz),1-Math.exp(-12*dt));cam.lookAt(pp.x,pp.y+1.6,pp.z);
- sun.position.set(pp.x+30,50,pp.z+20);sun.target.position.copy(pp);
+ updateEnvironment(dt,pp.x,pp.z);sun.target.position.copy(pp);
  const msg=riding?'E para bajar · '+Math.round(Math.abs(spd)*3.6)+' km/h':(near()?'E para subir al motoconcho':'');
  roleTick(dt);
  const missionDistance=Math.hypot(pp.x-GOAL.x,pp.z-GOAL.z);
