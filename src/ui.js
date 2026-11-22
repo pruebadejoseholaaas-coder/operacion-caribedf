@@ -134,6 +134,19 @@ export function createUI(src) {
       msgs.appendChild(d);
     }
     phoneBody.appendChild(msgs);
+    const radio = document.createElement('div');
+    radio.className = 'phone-contacts';
+    for (const [i, name] of [[0, 'Radio Merengue'], [1, 'Radio Bachata'], [2, 'Radio Noticias']]) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'phone-action'; b.textContent = name;
+      b.addEventListener('click', () => { src.radio?.(i); toast('Radio: ' + name, 2400); });
+      radio.appendChild(b);
+    }
+    const off = document.createElement('button');
+    off.type = 'button'; off.className = 'phone-action'; off.textContent = 'Apagar radio';
+    off.addEventListener('click', () => { src.stopRadio?.(); toast('Radio apagada', 1800); });
+    radio.appendChild(off);
+    phoneBody.appendChild(radio);
   }
 
   function openInventory() { renderInventory(); if (inv) inv.style.display = 'flex'; }
