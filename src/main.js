@@ -4,13 +4,14 @@ import { loadWorld } from './world.js';
 
 const T=THREE,$=id=>document.getElementById(id);
 const renderer=new T.WebGLRenderer({antialias:true});
-renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-renderer.shadowMap.enabled=true;
+const mobileDevice=matchMedia('(pointer:coarse)').matches;
+renderer.setPixelRatio(Math.min(devicePixelRatio,mobileDevice?1.25:1.75));
+renderer.shadowMap.enabled=!mobileDevice;
 document.body.prepend(renderer.domElement);
 const scene=new T.Scene();scene.background=new T.Color(0x9cd3f0);scene.fog=new T.Fog(0x9cd3f0,45,150);
 const cam=new T.PerspectiveCamera(60,1,.1,300);
 scene.add(new T.HemisphereLight(0xffffff,0x998877,.95));
-const sun=new T.DirectionalLight(0xfff0d0,1.1);sun.position.set(30,50,20);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);
+const sun=new T.DirectionalLight(0xfff0d0,1.1);sun.position.set(30,50,20);sun.castShadow=true;sun.shadow.mapSize.set(mobileDevice?512:1024,mobileDevice?512:1024);
 const sc=sun.shadow.camera;sc.left=sc.bottom=-40;sc.right=sc.top=40;sc.far=150;scene.add(sun,sun.target);
 const mats={},mat=c=>mats[c]||(mats[c]=new T.MeshLambertMaterial({color:c}));
 function box(w,h,l,c,x,y,z,sh=true,par=scene){const m=new T.Mesh(new T.BoxGeometry(w,h,l),mat(c));m.position.set(x,y,z);m.castShadow=sh;m.receiveShadow=true;par.add(m);return m}
@@ -154,6 +155,16 @@ rEl.addEventListener('click',e=>{const b=e.target.closest('.card');if(b)pick(ROL
 $('t').addEventListener('click',()=>rEl.style.display='flex');
 $('bQ').addEventListener('click',()=>useAbility());
 const GOAL=new T.Vector3(0,0,-79);
+const goalMark=new T.Group();
+const goalRing=new T.Mesh(new T.TorusGeometry(2.2,.16,8,32),new T.MeshBasicMaterial({color:0xffd166}));
+goalRing.rotation.x=-Math.PI/2;goalRing.position.y=.18;goalMark.add(goalRing);
+const goalBeacon=new T.Mesh(new T.CylinderGeometry(.12,.12,5,8),new T.MeshBasicMaterial({color:0xffd166,transparent:true,opacity:.55}));
+goalBeacon.position.y=2.7;goalMark.add(goalBeacon);goalMark.visible=false;scene.add(goalMark);
+const SAVE_KEY='operacion-caribe-save-v1';
+function readSave(){try{return JSON.parse(localStorage.getItem(SAVE_KEY)||'null')}catch{return null}}
+let saved=readSave(),missionDone=!!saved?.missionDone;
+function saveGame(){try{const p=player.g.position;localStorage.setItem(SAVE_KEY,JSON.stringify({x:p.x,z:p.z,mx:moto.position.x,mz:moto.position.z,rot,yaw,pitch,roleId:role?.id||null,missionDone}))}catch{}}
+let saveClock=0;
 const beam=new T.Mesh(new T.CylinderGeometry(.7,.7,80,10,1,true),new T.MeshBasicMaterial({color:0x4361ee,transparent:true,opacity:.45,side:T.DoubleSide}));
 beam.position.set(0,40,-72);beam.visible=false;scene.add(beam);
 const FEED=['Radio: la policía cambió de canal.','Cámara 3 sin señal en la calle principal.','Interferencia detectada… alguien escucha.','Alerta: un dron sobrevuela la plaza.','Mensaje cifrado recibido del Planificador.'];
@@ -182,7 +193,19 @@ loadWorld(T,scene,colliders).then(w=>{if(!w)return;world=w;
  npcs.forEach(n=>{n.g.visible=false;n.sp=0});
  player.g.position.set(w.spawn[0],0,w.spawn[1]);moto.position.set(w.spawn[0]+2,0,w.spawn[1]);
  GOAL.set(w.goal[0],0,w.goal[1]);beam.position.set(w.goal[0],40,w.goal[1]);
- w.update(w.spawn[0],w.spawn[1])});
+ w.update(w.spawn[0],w.spawn[1]);
+ goalMark.position.set(GOAL.x,0,GOAL.z);goalMark.visible=true;
+ if(saved&&Number.isFinite(saved.x)&&Number.isFinite(saved.z)){
+   player.g.position.set(saved.x,0,saved.z);
+   if(Number.isFinite(saved.mx)&&Number.isFinite(saved.mz))moto.position.set(saved.mx,0,saved.mz);
+   if(Number.isFinite(saved.rot))rot=saved.rot;
+   if(Number.isFinite(saved.yaw))yaw=saved.yaw;
+   if(Number.isFinite(saved.pitch))pitch=Math.max(.08,Math.min(1.2,saved.pitch));
+ }
+ const savedRole=ROLES.find(r=>r.id===saved?.roleId);if(savedRole)pick(savedRole);
+ $('mission').textContent=missionDone?'Objetivo completado · Explora la ciudad':'Objetivo: llega al punto de encuentro';
+ saveGame();
+});
 const clock=new T.Clock(),hint=$('h');
 function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.05);t+=dt;
  let ix=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+jx;
@@ -224,6 +247,14 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
  cam.position.lerp(new T.Vector3(tx,ty,tz),1-Math.exp(-12*dt));cam.lookAt(pp.x,pp.y+1.6,pp.z);
  sun.position.set(pp.x+30,50,pp.z+20);sun.target.position.copy(pp);
  const msg=riding?'E para bajar · '+Math.round(Math.abs(spd)*3.6)+' km/h':(near()?'E para subir al motoconcho':'');
- roleTick(dt);if(world&&(wt+=dt)>.4){wt=0;world.update(pp.x,pp.z)}hint.style.display=msg?'block':'none';hint.textContent=msg;$('bE').textContent=riding?'Bajar':'Subir';
+ roleTick(dt);
+ const missionDistance=Math.hypot(pp.x-GOAL.x,pp.z-GOAL.z);
+ if(!missionDone&&world&&missionDistance<5){missionDone=true;$('mission').textContent='¡Punto de encuentro alcanzado!';saveGame()}
+ if(!missionDone&&world)$('mission').textContent='Objetivo: llega al punto de encuentro · '+Math.round(missionDistance)+' m';
+ goalRing.scale.setScalar(1+.12*Math.sin(t*3));
+ goalBeacon.material.opacity=.35+.2*(.5+.5*Math.sin(t*2));
+ if(world&&(wt+=dt)>.4){wt=0;world.update(pp.x,pp.z)}
+ if((saveClock+=dt)>10){saveClock=0;saveGame()}hint.style.display=msg?'block':'none';hint.textContent=msg;$('bE').textContent=riding?'Bajar':'Subir';
  renderer.render(scene,cam)}
+addEventListener('pagehide',saveGame);
 loop();
