@@ -102,6 +102,17 @@ export function createBusinessSystem(T, scene, colliders) {
  try{const old=JSON.parse(localStorage.getItem('operacion-caribe-economy-v1')||'null');if(old&&Number.isFinite(old.cash))economy={cash:old.cash,inventory:old.inventory||{}}}catch{}
  const save=()=>{try{localStorage.setItem('operacion-caribe-economy-v1',JSON.stringify(economy))}catch{}};
  const money=n=>'RD$ '+Math.round(n).toLocaleString('es-DO');
+ // Acabado interior compartido para que los comercios se distingan también por dentro.
+ const floorCanvas=document.createElement('canvas');floorCanvas.width=floorCanvas.height=128;
+ const floorCtx=floorCanvas.getContext('2d');
+ floorCtx.fillStyle='#c8bca7';floorCtx.fillRect(0,0,128,128);
+ for(let y=0;y<128;y+=32)for(let x=0;x<128;x+=32){
+  floorCtx.fillStyle=((x+y)/32)%2?'#d8cdbb':'#b9ad99';floorCtx.fillRect(x+1,y+1,30,30);
+  floorCtx.strokeStyle='#a79b88';floorCtx.lineWidth=1;floorCtx.strokeRect(x+1,y+1,30,30);
+ }
+ const floorTexture=new T.CanvasTexture(floorCanvas);floorTexture.wrapS=floorTexture.wrapT=T.RepeatWrapping;floorTexture.repeat.set(2,2);
+ const floorMaterial=new T.MeshLambertMaterial({map:floorTexture});
+ const lampMaterial=new T.MeshBasicMaterial({color:0xffe8ad});
  function signTexture(text,color){const c=document.createElement('canvas');c.width=512;c.height=112;const x=c.getContext('2d');x.fillStyle='#'+color.toString(16).padStart(6,'0');x.fillRect(0,0,512,112);x.strokeStyle='#fff0c9';x.lineWidth=7;x.strokeRect(6,6,500,100);x.fillStyle='#fff';x.font='bold 34px Trebuchet MS';x.textAlign='center';x.textBaseline='middle';x.fillText(text,256,56,470);return new T.CanvasTexture(c)}
  function person(parent,shirt,skin=0x9b684b){const g=new T.Group();parent.add(g);cube(g,.58,.82,.34,shirt,0,1.2,0);const head=new T.Mesh(new T.SphereGeometry(.22,10,8),material(skin));head.position.y=1.82;g.add(head);cube(g,.18,.55,.2,0x26364a,-.16,.5,0);cube(g,.18,.55,.2,0x26364a,.16,.5,0);const a=cube(g,.14,.62,.14,shirt,-.38,1.28,0),b=cube(g,.14,.62,.14,shirt,.38,1.28,0);return{g,a,b,phase:Math.random()*6}}
  function transformedBoxCollider(group,w,h,d,x,y,z){const c=Math.cos(group.rotation.y),s=Math.sin(group.rotation.y),corners=[[-w/2,-d/2],[w/2,-d/2],[w/2,d/2],[-w/2,d/2]].map(([lx,lz])=>[group.position.x+lx*c+lz*s+x,group.position.z-lx*s+lz*c+z]);const xs=corners.map(p=>p[0]),zs=corners.map(p=>p[1]),poly=corners.flat();colliders.push({x0:Math.min(...xs),x1:Math.max(...xs),z0:Math.min(...zs),z1:Math.max(...zs),poly})}
@@ -109,6 +120,13 @@ export function createBusinessSystem(T, scene, colliders) {
   const [x,z,dx,dz,side]=SITES[index],g=new T.Group();g.position.set(x,0,z);g.rotation.y=Math.atan2(-dx*side,-dz*side);scene.add(g);
   const W=8.2,D=6.6,wall=.22,front=D/2;
   cube(g,W,.16,D,0x9c8c78,0,.08,0);
+  const tiledFloor=new T.Mesh(new T.PlaneGeometry(W-.3,D-.3),floorMaterial);
+  tiledFloor.rotation.x=-Math.PI/2;tiledFloor.position.y=.171;tiledFloor.receiveShadow=true;g.add(tiledFloor);
+  // Luminarias interiores visibles, sin crear luces dinámicas costosas por cada local.
+  for(const lx of [-2.25,0,2.25]){
+   const fixture=new T.Mesh(new T.BoxGeometry(1.05,.055,.22),lampMaterial);
+   fixture.position.set(lx,2.67,-1.65);g.add(fixture);
+  }
   cube(g,W,2.8,wall,data.wall,0,1.48,-D/2);
   cube(g,wall,2.8,D,data.wall,-W/2,1.48,0);
   cube(g,wall,2.8,D,data.wall,W/2,1.48,0);
