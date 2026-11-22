@@ -9,13 +9,14 @@ GPU real, así que el rendimiento final sigue pendiente de validación en dispos
 
 ## Estado de publicación
 
-- Rama local: `mundo-abierto-trafico-minimapa`, con 12 commits sobre `main` (incluye este informe).
+- Rama local: `mundo-abierto-trafico-minimapa`, con 13 commits sobre `main` (incluye este informe).
 - **No se pudo subir a GitHub**: el token de la integración devuelve
   `403 Resource not accessible by integration` al crear la rama o hacer push.
   El repositorio sigue intacto y no se ha abierto ningún Pull Request.
 - Para publicar: usar una cuenta con permiso de escritura y ejecutar
   `git push origin mundo-abierto-trafico-minimapa`, después abrir un PR contra `main`.
-- Se conservan los 8 parches y el bundle 0.4 de bloques anteriores. El código actual está en la rama local; no se generó un bundle 0.5 nuevo.
+- Se conservan los 8 parches y el bundle 0.4 de bloques anteriores. Para esta entrega se generaron
+  `operacion-caribe-0.5.bundle` y 13 parches en `../operacion-caribe-entrega-0.5/`.
 
 ## Cómo se verifica
 
