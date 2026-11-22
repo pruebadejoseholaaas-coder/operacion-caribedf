@@ -35,25 +35,36 @@ export async function loadWorld(T, scene, colliders) {
     let c = cells.get(k); if (!c) cells.set(k, c = { r: [], b: [], w: [], g: [] });
     c[kind].push(f);
   };
-  let m = 0;
+  let maxX = 0, maxZ = 0;
+  const track = p => {
+    for (let i = 0; i + 1 < p.length; i += 2) {
+      maxX = Math.max(maxX, Math.abs(p[i]));
+      maxZ = Math.max(maxZ, Math.abs(p[i + 1]));
+    }
+  };
+
   d.r.forEach(([w, p]) => {
-  for (let i = 0; i + 3 < p.length; i += 2) {
-    const segment = [p[i], p[i + 1], p[i + 2], p[i + 3]];
-    const center = [
-      (p[i] + p[i + 2]) / 2,
-      (p[i + 1] + p[i + 3]) / 2
-    ];
+    for (let i = 0; i + 3 < p.length; i += 2) {
+      const segment = [p[i], p[i + 1], p[i + 2], p[i + 3]];
+      const center = [(p[i] + p[i + 2]) / 2, (p[i + 1] + p[i + 3]) / 2];
+      add('r', [w, segment], center);
+      track(segment);
+    }
+  });
 
-    add('r', [w, segment], center);
+  d.b.forEach(f => { add('b', f, f[2]); track(f[2]); });
+  d.w.forEach(f => { add('w', f, f); track(f); });
+  d.g.forEach(f => { add('g', f, f); track(f); });
 
-    segment.forEach(v => {
-      m = Math.max(m, Math.abs(v));
-    });
-  }
-});
-  d.b.forEach(f => add('b', f, f[2]));
- d.w.forEach(f => add('w', f, f));
-d.g.forEach(f => add('g', f, f));
+  // Suelo continuo para que el jugador nunca salga del terreno del mapa.
+  const ground = new T.Mesh(
+    new T.PlaneGeometry((maxX + 40) * 2, (maxZ + 40) * 2),
+    new T.MeshLambertMaterial({ color: 0x8f8a7e })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.08;
+  ground.receiveShadow = true;
+  scene.add(ground);
 
   const shape = p => { const s = new T.Shape(); for (let i = 0; i < p.length; i += 2) i ? s.lineTo(p[i], -p[i + 1]) : s.moveTo(p[i], -p[i + 1]); return s; };
   const flat = (p, c, y, grp) => {
@@ -155,5 +166,5 @@ d.g.forEach(f => add('g', f, f));
     }
   }
 
-  return { spawn: d.spawn, goal: d.goal, lim: { x: m + 40, z: m + 40 }, update };
+  return { spawn: d.spawn, goal: d.goal, lim: { x: maxX + 40, z: maxZ + 40 }, update };
 }
