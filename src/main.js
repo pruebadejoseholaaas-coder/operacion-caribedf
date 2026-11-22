@@ -130,6 +130,18 @@ const npcs=[];for(let i=0;i<16;i++){const p=person(sh2[i%6],0x2b3a55,skins[i%4],
  const lane=(Math.random()<.5?-1:1)*(2.4+Math.random()*3);p.g.position.set(lane,0,-60+Math.random()*120);
  p.dir=Math.random()<.5?-1:1;p.sp=1.3+Math.random()*1.2;p.t=Math.random()*9;scene.add(p.g);npcs.push(p);
  p.mk=new T.Mesh(new T.SphereGeometry(.2,8,8),new T.MeshBasicMaterial({color:0x5fe0ff,depthTest:false}));p.mk.position.y=2.7;p.mk.renderOrder=9;p.mk.visible=false;p.g.add(p.mk)}
+let pedestrianRoutes=[];
+const traffic=[];
+function roadSegments(roads,minWidth=0){const out=[];for(const r of roads||[]){if(r.width<minWidth)continue;const p=r.points;for(let i=0;i+3<p.length;i+=2){const ax=p[i],az=p[i+1],bx=p[i+2],bz=p[i+3],len=Math.hypot(bx-ax,bz-az);if(len>24)out.push({ax,az,bx,bz,len,width:r.width})}}return out}
+function makeTrafficCar(color){const g=new T.Group();const body=new T.Mesh(new T.BoxGeometry(1.75,.62,3.5),mat(color));body.position.y=.72;body.castShadow=true;g.add(body);const cabin=new T.Mesh(new T.BoxGeometry(1.35,.68,1.65),mat(0x8bb5c9));cabin.position.set(0,1.32,-.15);cabin.castShadow=true;g.add(cabin);for(const x of [-.88,.88])for(const z of [-1.12,1.12]){const wh=new T.Mesh(new T.CylinderGeometry(.34,.34,.2,10),mat(0x171717));wh.rotation.z=Math.PI/2;wh.position.set(x,.38,z);g.add(wh)}const lampMat=new T.MeshBasicMaterial({color:0xfff0b0});for(const x of [-.55,.55]){const l=new T.Mesh(new T.BoxGeometry(.3,.16,.06),lampMat);l.position.set(x,.78,1.77);g.add(l)}scene.add(g);return g}
+function activateCityLife(roads){
+ const segments=roadSegments(roads,4),sidewalks=segments.filter(s=>s.width>=5&&s.width<=14);
+ if(!segments.length)return;
+ pedestrianRoutes=npcs.map((n,i)=>{const s=sidewalks[i%Math.max(1,sidewalks.length)]||segments[i%segments.length];const dx=(s.bx-s.ax)/s.len,dz=(s.bz-s.az)/s.len,nx=-dz,nz=dx,side=i%2?1:-1,off=s.width/2+1.35;const a={x:s.ax+dx*s.len*.18+nx*off*side,z:s.az+dz*s.len*.18+nz*off*side},b={x:s.bx-dx*s.len*.18+nx*off*side,z:s.bz-dz*s.len*.18+nz*off*side};return{a,b}});
+ npcs.forEach((n,i)=>{const r=pedestrianRoutes[i];n.route=r;n.progress=Math.random();n.dir=Math.random()<.5?1:-1;n.sp=.65+Math.random()*.45;n.g.visible=true;n.g.position.set(r.a.x+(r.b.x-r.a.x)*n.progress,0,r.a.z+(r.b.z-r.a.z)*n.progress)});
+ const colors=[0xe76f51,0xf2c14e,0x2a9d8f,0xeeeeee,0x334455,0x9b5de5];
+ for(let i=0;i<Math.min(7,segments.length);i++){const s=segments[(i*7+2)%segments.length],car=makeTrafficCar(colors[i%colors.length]);const lane=(i%2?1:-1)*Math.max(.7,s.width*.17);traffic.push({g:car,s,progress:(i/7+Math.random()*.08)%1,speed:3.2+(i%3)*1.15,lane})}
+}
 
 // Motoconcho
 const moto=new T.Group();scene.add(moto);moto.position.set(3,0,27);
@@ -230,7 +242,7 @@ loadWorld(T,scene,colliders).then(w=>{if(!w)return;world=w;
  scene.children.slice(legacyStart+1,legacyEnd).forEach(o=>o.visible=false);
  ground.material.map=null;ground.material.color.set(0x8f8a7e);ground.material.needsUpdate=true;
  colliders.length=0;lim.x=w.lim.x;lim.z=w.lim.z;
- npcs.forEach(n=>{n.g.visible=false;n.sp=0});
+ activateCityLife(w.roads||[]);
  player.g.position.set(w.spawn[0],0,w.spawn[1]);moto.position.set(w.spawn[0]+2,0,w.spawn[1]);
  GOAL.set(w.goal[0],0,w.goal[1]);beam.position.set(w.goal[0],40,w.goal[1]);
  w.update(w.spawn[0],w.spawn[1]);
@@ -279,7 +291,8 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
   player.g.position.set(moto.position.x,.3,moto.position.z);player.g.rotation.y=rot;player.g.rotation.z=moto.rotation.z;
   player.legL.rotation.x=player.legR.rotation.x=-1.2;player.armL.rotation.x=player.armR.rotation.x=-1.1}
  else{player.g.rotation.y=rot;player.g.rotation.z=0;swing(player,Math.sin(t*(sp>6?13:9))*Math.min(1,sp/5)*.9)}
- npcs.forEach(n=>{const fr=abT>0&&role&&role.id==='inf'&&n.g.position.distanceTo(player.g.position)<25;if(!fr)n.g.position.z+=n.dir*n.sp*dt;if(Math.abs(n.g.position.z)>70)n.dir*=-1;n.g.rotation.y=n.dir>0?0:Math.PI;swing(n,fr?0:Math.sin((t+n.t)*8)*.6)});
+ npcs.forEach(n=>{if(!n.route)return;const fr=abT>0&&role&&role.id==='inf'&&n.g.position.distanceTo(player.g.position)<25;if(!fr){n.progress+=n.dir*n.sp*dt/Math.max(1,Math.hypot(n.route.b.x-n.route.a.x,n.route.b.z-n.route.a.z));if(n.progress>1){n.progress=1;n.dir=-1}else if(n.progress<0){n.progress=0;n.dir=1}}const r=n.route;n.g.position.x=r.a.x+(r.b.x-r.a.x)*n.progress;n.g.position.z=r.a.z+(r.b.z-r.a.z)*n.progress;n.g.rotation.y=Math.atan2((r.b.x-r.a.x)*n.dir,(r.b.z-r.a.z)*n.dir);swing(n,fr?0:Math.sin((t+n.t)*8)*.42)});
+ traffic.forEach(v=>{v.progress=(v.progress+v.speed*dt/v.s.len)%1;const s=v.s,dx=(s.bx-s.ax)/s.len,dz=(s.bz-s.az)/s.len,nx=-dz,nz=dx;v.g.position.set(s.ax+(s.bx-s.ax)*v.progress+nx*v.lane,0,s.az+(s.bz-s.az)*v.progress+nz*v.lane);v.g.rotation.y=Math.atan2(dx,dz)});
  if(role&&performance.now()-lastDrag>1200&&(riding?Math.abs(spd)>1:(sp>.8&&iz<.5)))yaw+=angD(yaw,rot+Math.PI)*(1-Math.exp(-(riding?3:1.2)*dt));
  cam.fov+=((60+(riding?Math.min(18,Math.abs(spd)*.7):0))-cam.fov)*(1-Math.exp(-4*dt));cam.updateProjectionMatrix();
  const pp=player.g.position,dist=riding?9:6.5;
