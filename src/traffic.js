@@ -186,6 +186,19 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
 
   const randModel = () => CATALOG[Math.floor(Math.random() * CATALOG.length)];
 
+  const paxBody = new T.BoxGeometry(.5, .78, .3), paxHead = new T.SphereGeometry(.18, 8, 6), paxLeg = new T.BoxGeometry(.18, .62, .2);
+  const paxShirts = [0xffffff, 0x2a9d8f, 0xf4a261, 0x6ec1e4, 0xd97aa6, 0xf2c14e];
+  function makePassenger() {
+    const g = new T.Group();
+    const body = new T.Mesh(paxBody, material(paxShirts[Math.floor(Math.random() * paxShirts.length)]));
+    body.position.y = 1.12; g.add(body);
+    const head = new T.Mesh(paxHead, material(0x9a684b)); head.position.y = 1.66; g.add(head);
+    for (const x of [-.14, .14]) {
+      const leg = new T.Mesh(paxLeg, material(0x2b3a55)); leg.position.set(x, .38, 0); g.add(leg);
+    }
+    return g;
+  }
+
   function randomEdgeNear(px, pz, min = 55, max = 150) {
     let fallback = null, fallbackD = Infinity;
     for (let i = 0; i < 80; i++) {
@@ -257,7 +270,15 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
     const sign = new T.Mesh(new T.BoxGeometry(.9, .5, .07), material(0x1f6f9c)); sign.position.set(0, 2.35, 0); g.add(sign);
     const bench = new T.Mesh(new T.BoxGeometry(1.2, .1, .38), material(0x876b4e)); bench.position.set(0, .55, .55); g.add(bench);
     g.position.set(sx, 0, sz); g.rotation.y = Math.atan2(e.dx, e.dz); scene.add(g);
-    stops.push({ x: sx, z: sz, g, node: n.k });
+    const ox = -e.dz, oz = e.dx;
+    const pax = [];
+    for (let i = 0; i < 2; i++) {
+      const p = makePassenger();
+      const hx = sx + ox * .95 + e.dx * (i ? .9 : -.9), hz = sz + oz * .95 + e.dz * (i ? .9 : -.9);
+      p.position.set(hx, 0, hz); p.rotation.y = Math.atan2(-ox, -oz); scene.add(p);
+      pax.push({ g: p, home: [hx, hz], state: 'wait', timer: 0, from: null, to: null, t: 0 });
+    }
+    stops.push({ x: sx, z: sz, g, node: n.k, pax, busy: null, ox, oz });
   }
 
   // Semáforos: se construyen solo cerca del jugador para no cargar la escena.
@@ -390,7 +411,10 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
       // Autobuses y guaguas se detienen en las paradas cercanas.
       if (['bus', 'guagua', 'publico'].includes(v.model.kind)) {
         const stop = stops.find(s => s.node === e.b);
-        if (stop && v.lastStop !== stop && remaining < 9) { v.wait = 3.2; v.lastStop = stop; }
+        if (stop && v.lastStop !== stop && remaining < 9) {
+          v.wait = 3.2; v.lastStop = stop;
+          if (!stop.busy) stop.busy = { v, t: 0, boarded: false, alighted: false, pax: null };
+        }
       }
 
       const accel = target > v.speed ? 4.5 : 9.5;
@@ -420,6 +444,52 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
       else v.g.visible = true;
     }
 
+    // Pasajeros: esperan en la parada, suben al autobús y otro baja.
+    for (const s of stops) {
+      const near = Math.hypot(s.x - px, s.z - pz) < 145;
+      s.g.visible = near;
+      if (s.busy) {
+        const b = s.busy; b.t += dt;
+        if (!b.boarded && b.t > .45) {
+          const p = s.pax.find(q => q.state === 'wait');
+          if (p) {
+            const v = b.v, e = v.edge, rx = -e.dz, rz = e.dx;
+            const door = { x: v.g.position.x + rx * 1.05 - e.dx * v.model.length * .15, z: v.g.position.z + rz * 1.05 - e.dz * v.model.length * .15 };
+            p.state = 'boarding'; p.t = 0; p.from = [p.g.position.x, p.g.position.z]; p.to = [door.x, door.z];
+            b.pax = p;
+          }
+          b.boarded = true;
+        }
+        if (!b.alighted && b.t > .95) {
+          const p = b.pax;
+          if (p) {
+            const v = b.v, e = v.edge, rx = -e.dz, rz = e.dx;
+            p.g.position.set(v.g.position.x + rx * 1.05 - e.dx * v.model.length * .15, 0, v.g.position.z + rz * 1.05 - e.dz * v.model.length * .15);
+            p.state = 'alighting'; p.t = 0; p.from = [p.g.position.x, p.g.position.z]; p.to = p.home;
+            b.pax = null;
+          }
+          b.alighted = true;
+        }
+        if (b.t > 3.7) s.busy = null;
+      }
+      for (const p of s.pax) {
+        if (p.state === 'boarding' || p.state === 'alighting') {
+          p.t += dt;
+          const k = Math.min(1, p.t / (p.state === 'boarding' ? .85 : 1.25));
+          p.g.position.x = p.from[0] + (p.to[0] - p.from[0]) * k;
+          p.g.position.z = p.from[1] + (p.to[1] - p.from[1]) * k;
+          p.g.position.y = Math.abs(Math.sin(k * Math.PI * 3)) * .06;
+          if (k >= 1) { p.g.position.y = 0; p.state = p.state === 'boarding' ? 'gone' : 'wait'; p.timer = p.state === 'gone' ? 9 + Math.random() * 9 : 0; }
+        } else if (p.state === 'gone') {
+          p.timer -= dt;
+          if (p.timer <= 0) { p.state = 'wait'; p.g.position.set(p.home[0], 0, p.home[1]); }
+        } else {
+          p.g.position.y = Math.abs(Math.sin(clock * 1.6 + p.home[0])) * .02;
+        }
+        p.g.visible = near && p.state !== 'gone';
+      }
+    }
+
     // Reciclar estacionados lejanos.
     for (let i = parked.length - 1; i >= 0; i--) {
       const p = parked[i];
@@ -439,6 +509,6 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
 
   return {
     update, vehicles, stops, graph,
-    stats: () => ({ vehicles: vehicles.length, parked: parked.length, nodes: graph.nodes.size, lights: graph.lights.length, stops: stops.length })
+    stats: () => ({ vehicles: vehicles.length, parked: parked.length, nodes: graph.nodes.size, lights: graph.lights.length, stops: stops.length, passengers: stops.reduce((n, s) => n + s.pax.filter(p => p.state === 'wait').length, 0) })
   };
 }

@@ -28,7 +28,8 @@ Abre la dirección que muestre la terminal. Desde el celular, en la misma red Wi
 - [x] Fase 1: prototipo web (calle, personaje, peatones, vehículo)
 - [x] Ciudad real (OpenStreetMap), 40 comercios, tráfico con semáforos y minimapa
 - [x] Casa del jugador con interior, teléfono, inventario y encargos de entrega
-- [ ] Trabajos con turnos, misiones encadenadas y transporte público con pasajeros
+- [x] Transporte público con pasajeros que esperan, suben y bajan
+- [ ] Trabajos con turnos y misiones encadenadas
 - [ ] Audio ambiental y pruebas en Android
 - [ ] Fase 2: sistema de roles (Programador, Planificador, Conductor...)
 - [ ] Fase 3: primer asalto con motor de tramas y giros aleatorios

@@ -84,6 +84,21 @@ export function createMinimap(world, sources, options = {}) {
       ctx.fillStyle = s.open ? openColor : closedColor;
       ctx.beginPath(); ctx.arc(s.g.position.x, s.g.position.z, 2.4, 0, Math.PI * 2); ctx.fill();
     }
+    const stops = sources.stops ? sources.stops() : [];
+    ctx.fillStyle = '#4fb3ff';
+    for (const st of stops) {
+      const dx = st.x - player.x, dz = st.z - player.z;
+      if (dx * dx + dz * dz > 8100) continue;
+      ctx.fillRect(st.x - 1.6, st.z - 1.6, 3.2, 3.2);
+    }
+    const cars = sources.vehicles ? sources.vehicles() : [];
+    ctx.fillStyle = '#f3ead8';
+    for (const v of cars) {
+      if (!v.g.visible) continue;
+      const dx = v.g.position.x - player.x, dz = v.g.position.z - player.z;
+      if (dx * dx + dz * dz > 8100) continue;
+      ctx.beginPath(); ctx.arc(v.g.position.x, v.g.position.z, 1.4, 0, Math.PI * 2); ctx.fill();
+    }
     const npcs = sources.npcs ? sources.npcs() : [];
     ctx.fillStyle = '#d9e6ef';
     for (const n of npcs) {
@@ -145,6 +160,16 @@ export function createMinimap(world, sources, options = {}) {
       const [x, y] = P(shop.g.position.x, shop.g.position.z);
       b.fillStyle = shop.open ? openColor : closedColor;
       b.beginPath(); b.arc(x, y, 3, 0, Math.PI * 2); b.fill();
+    }
+    const stops = sources.stops ? sources.stops() : [];
+    b.fillStyle = '#4fb3ff';
+    for (const st of stops) { const [x, y] = P(st.x, st.z); b.fillRect(x - 2, y - 2, 4, 4); }
+    const cars = sources.vehicles ? sources.vehicles() : [];
+    b.fillStyle = '#f3ead8';
+    for (const v of cars) {
+      if (!v.g.visible) continue;
+      const [x, y] = P(v.g.position.x, v.g.position.z);
+      b.beginPath(); b.arc(x, y, 2, 0, Math.PI * 2); b.fill();
     }
     const home = sources.home ? sources.home() : null;
     if (home) {

@@ -24,7 +24,7 @@ colisiones, mundo, tráfico, comercios, NPC y jugador. Sirve para pruebas automa
 | --- | --- | --- |
 | 1. Mundo y ciudad | Parcial | Calles, aceras, contenes, cruces, edificios OSM con fachadas, parques, agua, árboles, farolas, bancos, papeleras, postes y carga por sectores. Faltan interiores de edificios no comerciales y más variedad de alturas. |
 | 2. Habitantes e IA | Parcial | 22 NPC con nombre, oficio, personalidad, horario, ruta por aceras, saludos, confianza y memoria guardada. Faltan rutas casa-trabajo, conversaciones encadenadas y animaciones de sentarse/comprar. |
-| 3. Tráfico y transporte | Implementado en este bloque | Grafo de calles, intersecciones, semáforos, carriles, separación, frenado, estacionados, paradas de guagua y reciclaje. Verificado por telemetría. Faltan pasajeros subiendo/bajando y tráfico en el minimapa. |
+| 3. Tráfico y transporte | Implementado | Grafo de calles, intersecciones, semáforos, carriles, separación, frenado, estacionados, paradas con pasajeros que esperan, suben y bajan, y tráfico visible en el minimapa. Verificado por telemetría. |
 | 4. Viviendas y vida cotidiana | Implementado en este bloque | Casa propia con fachada en la ciudad e interior explorable: sala, comedor, cocina, dormitorio y baño. Puerta funcional, luces, cama para dormir, nevera, armario e inventario doméstico. Guardado de energía, ropa y luces. |
 | 5. Negocios y economía | Parcial | 40 comercios con interior, horarios, stock, precios en RD$, empleado y cliente animados, compra y economía persistente. Colocación corregida con muestreo del solar y acceso despejado: 0/40 dentro de edificios. |
 | 6. Trabajos y misiones | Parcial | Objetivo de encuentro, roles con habilidades y encargos de entrega repetibles desde el teléfono con recompensa en RD$, marcador azul y progreso. Faltan trabajos con turnos, misiones encadenadas y reputación. |
@@ -83,6 +83,14 @@ colisiones, mundo, tráfico, comercios, NPC y jugador. Sirve para pruebas automa
 - El minimapa gira con la cámara y la flecha muestra la orientación real del jugador.
 - Botones táctiles para mochila y teléfono.
 
+### Pasajeros del transporte público
+
+- Cada parada tiene dos vecinos esperando en la acera.
+- Cuando una guagua o carro público se detiene, un pasajero camina hasta la puerta y sube;
+  otro desciende y se queda esperando en la parada.
+- Los pasajeros reaparecen con el tiempo, así que las paradas no se vacían.
+- Las paradas (cuadros azules) y los vehículos (puntos blancos) se dibujan en el minimapa y el mapa.
+
 ### Encargos de entrega
 
 - El teléfono ofrece un encargo a un comercio entre 70 y 280 m.
@@ -105,6 +113,8 @@ colisiones, mundo, tráfico, comercios, NPC y jugador. Sirve para pruebas automa
 | Flujo de la casa | Entrar, apagar luces, dormir (06:31, energía 100), cambiar ropa, comer sin comida, abrir mochila y salir: correcto. |
 | Persistencia tras recargar | Energía, ropa, luces y posición se restauran. |
 | Encargo de entrega | Aceptado desde el teléfono, entregado y pagado (+RD$ 353 / +RD$ 401 en dos pruebas). |
+| Pasajeros de parada | 20 pasajeros esperando en 10 paradas; un autobús detenido activa subida y bajada. |
+| Interfaz móvil (390×844, táctil) | Botones sin solaparse, teléfono y mochila caben en pantalla y responden. |
 | FPS headless | ≈3,5 fps con SwiftShader; no representa el rendimiento de una GPU real. |
 
 ## Errores conocidos y limitaciones
@@ -112,18 +122,16 @@ colisiones, mundo, tráfico, comercios, NPC y jugador. Sirve para pruebas automa
 - El rendimiento en Android real no está medido. El tráfico y los semáforos usan objetos ligeros,
   pero falta probarlo en un teléfono.
 - Los semáforos y las paradas no tienen colisión (son mobiliario).
-- Los pasajeros del transporte público aún no suben ni bajan.
-- El tráfico no aparece en el minimapa.
 - El interior de la casa es funcional pero sencillo; no hay animaciones de sentarse ni de cocinar.
+- Los pasajeros de parada son una simulación visual: no compran billete ni tienen rutas propias.
 - El encargo no se guarda al recargar (solo el dinero ganado).
 - La lluvia no moja las calles ni genera charcos.
 - El audio ambiental y la música siguen pendientes.
 
 ## Próxima tarea prioritaria
 
-1. Pasajeros que suben y bajan de guaguas y carros públicos en las paradas.
-2. Tráfico y semáforos visibles en el minimapa.
-3. Trabajos con turno (colmado, reparto, taller) y misiones encadenadas con reputación.
-4. Interiores de los comercios con clientes que entran, compran y salen.
-5. Lluvia que moje calles y genere charcos; audio ambiental y radio.
-6. Menú principal, ajustes gráficos y prueba real en Android.
+1. Trabajos con turno (colmado, reparto, taller) y misiones encadenadas con reputación.
+2. Interiores de los comercios con clientes que entran, compran y salen.
+3. Lluvia que moje calles y genere charcos; audio ambiental y radio.
+4. Menú principal y ajustes gráficos.
+5. Prueba real en Android y medición de FPS.
