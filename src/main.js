@@ -390,7 +390,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
   const gr=1-Math.exp(-(keys.Space?1.6:8)*dt);
   vx+=(Math.sin(rot)*spd-vx)*gr;vz+=(Math.cos(rot)*spd-vz)*gr;
  }else{
-  const speed=turbo*((keys.ShiftLeft||keys.ShiftRight||run)?8.5:4.6),k=1-Math.exp(-10*dt);
+  const speed=turbo*((keys.ShiftLeft||keys.ShiftRight||run)?8.5:6.0),k=1-Math.exp(-10*dt);
   vx+=(mx/ml*mag*speed-vx)*k;vz+=(mz/ml*mag*speed-vz)*k;
  }
  const bx=obj.x+vx*dt,bz=obj.z+vz*dt;obj.x=bx;obj.z=bz;resolve(obj,riding?.7:.45);
