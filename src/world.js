@@ -238,16 +238,50 @@ export async function loadWorld(T, scene, colliders) {
       grp.add(tr, cr);
     }
     c.w.forEach(p => flat(p, 0x2b8fd6, .02, grp));
+    const parkTrees = [];
+    const insidePolygon = (x, z, p) => {
+      let inside = false;
+      for (let i = 0, j = p.length - 2; i < p.length; j = i, i += 2) {
+        const xi = p[i], zi = p[i + 1], xj = p[j], zj = p[j + 1];
+        if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / ((zj - zi) || .0001) + xi) inside = !inside;
+      }
+      return inside;
+    };
     c.g.forEach(p => {
       flat(p, 0x4a9a4a, .02, grp);
-      let sx = 0, sz = 0, count = 0;
-      for (let i = 0; i < p.length; i += 2) { sx += p[i]; sz += p[i + 1]; count++; }
+      let sx = 0, sz = 0, count = 0, minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+      for (let i = 0; i < p.length; i += 2) {
+        sx += p[i]; sz += p[i + 1]; count++;
+        minX = Math.min(minX, p[i]); maxX = Math.max(maxX, p[i]);
+        minZ = Math.min(minZ, p[i + 1]); maxZ = Math.max(maxZ, p[i + 1]);
+      }
       if (count >= 4) {
         const bx = sx / count, bz = sz / count;
         benches.push([bx, .64, bz], [bx, .64, bz + 2.1]);
         bins.push([bx + 2.1, .38, bz]);
+        // Vegetación de parques: puntos comprobados dentro del polígono, sin invadir calles.
+        let planted = 0;
+        for (let x = minX + 5; x < maxX - 3 && planted < 6; x += 11) {
+          for (let z = minZ + 5; z < maxZ - 3 && planted < 6; z += 11) {
+            if (insidePolygon(x, z, p) && Math.hypot(x - bx, z - bz) > 5) {
+              parkTrees.push([x, z, .85 + (planted % 3) * .12]);
+              planted++;
+            }
+          }
+        }
       }
     });
+    if (parkTrees.length) {
+      const tr = new T.InstancedMesh(trunkG, mat(0x765238), parkTrees.length);
+      const cr = new T.InstancedMesh(crownG, mat(0x397d37), parkTrees.length);
+      const obj = new T.Object3D();
+      parkTrees.forEach(([x, z, scale], i) => {
+        obj.position.set(x, 0, z); obj.scale.setScalar(scale); obj.updateMatrix();
+        tr.setMatrixAt(i, obj.matrix); cr.setMatrixAt(i, obj.matrix);
+      });
+      tr.instanceMatrix.needsUpdate = cr.instanceMatrix.needsUpdate = true;
+      grp.add(tr, cr);
+    }
     addInstances(grp, lampPoleG, 0x424b4d, lamps, true);
     addInstances(grp, lampHeadG, 0xe6d8a6, lamps.map(([x, y, z, a]) => [x + Math.sin(a) * .3, 5.45, z + Math.cos(a) * .3, a]), false);
     addInstances(grp, utilityPoleG, 0x6e5b45, utilityPoles, true);
