@@ -175,8 +175,8 @@ function makeTrafficVehicle(model){
   }
   if(kind==='emergency'){const bar=new T.Mesh(new T.BoxGeometry(width*.55,.16,.42),mat(0xce1126));bar.position.set(0,bodyY+bodyH*.55,-length*.08);g.add(bar)}
   if(kind==='truck'){const cargo=new T.Mesh(new T.BoxGeometry(width*.88,height*.72,length*.42),mat(0xc7c7c7));cargo.position.set(0,bodyY+bodyH*.55,-length*.22);g.add(cargo)}
-  const axleZ=kind==='truck'||kind==='bus'?.34:.32;
-  for(const x of [-width/2-.03,width/2+.03])for(const z of [-length*axleZ,length*axleZ]){const wh=new T.Mesh(new T.CylinderGeometry(kind==='truck'||kind==='bus'?.42:.34,kind==='truck'||kind==='bus'?.42:.34,.2,10),mat(0x171717));wh.rotation.z=Math.PI/2;wh.position.set(x,.4,z);g.add(wh);wheels.push(wh)}
+  const axleZ=(kind==='truck'||kind==='bus')?.34:.32,wheelRadius=(kind==='truck'||kind==='bus')?.42:.34;
+  for(const x of [-width/2-.03,width/2+.03])for(const z of [-length*axleZ,length*axleZ]){const wh=new T.Mesh(new T.CylinderGeometry(wheelRadius,wheelRadius,.2,10),mat(0x171717));wh.rotation.z=Math.PI/2;wh.position.set(x,.4,z);g.add(wh);wheels.push(wh)}
  }
  scene.add(g);g.userData.wheels=wheels;return g
 }
