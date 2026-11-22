@@ -508,7 +508,56 @@ export function createBusinessSystem(T, scene, colliders) {
    cube(g,1.85,.9,.08,0x704b35,-2.45,2.05,front+.035);
    for(let i=0;i<4;i++)cube(g,1.3,.055,.035,i%2?0xf0d9aa:0xf4eee1,-2.45,2.34-i*.19,front+.085);
   }
-  if(data.id==='reposteria'){cube(g,1.25,1.35,.9,0x51433a,2.55,.8,-1.55);cube(g,.9,.7,.08,0xe4b66d,2.55,.85,-1.05);for(let i=0;i<3;i++)cube(g,.9,.1,.5,0xb18a5b,-2.7,.5+i*.42,-1.2)}
+  if(data.id==='reposteria'){
+   // Dulcería y repostería: vitrinas, bizcochos decorados y bandejas de dulces.
+   cube(g,1.25,1.35,.9,0x51433a,2.55,.8,-1.55);
+   cube(g,.9,.7,.08,0xe4b66d,2.55,.85,-1.05);
+   // Vitrina principal con paneles de cristal y dos niveles de exhibición.
+   cube(g,2.25,.78,.72,0x76513a,-2.25,.58,-1.35);
+   cube(g,2.3,.07,.76,0xb9c0c2,-2.25,1.02,-1.35);
+   for(const px of [-3.35,-1.15])cube(g,.045,.78,.045,0x9ccbd0,px,1.42,-1.35);
+   cube(g,2.2,.045,.045,0x9ccbd0,-2.25,1.82,-1.35);
+   for(let i=0;i<4;i++){
+    const cake=new T.Mesh(new T.CylinderGeometry(.22,.24,.22,12),material([0xf0d4b5,0xe7a6b4,0x8d5a48,0xf1e6d1][i]));
+    cake.position.set(-3.05+i*.52,1.17,-1.35);g.add(cake);
+    const icing=new T.Mesh(new T.SphereGeometry(.12,10,7),material([0xfff0df,0xf5d8e1,0xf4e5bd,0xfff7e8][i]));
+    icing.scale.set(1.25,.45,1.1);icing.position.set(-3.05+i*.52,1.32,-1.35);g.add(icing);
+   }
+   // Mesa de decoración con manga pastelera, recipientes y bizcocho.
+   cube(g,2.05,.82,.92,0x8b6348,.05,.52,-2.35);
+   cube(g,2.12,.1,.98,0xe8dfd2,.05,.98,-2.35);
+   const cakeBase=new T.Mesh(new T.CylinderGeometry(.36,.36,.2,16),material(0xf0d4b5));
+   cakeBase.position.set(-.45,1.14,-2.35);g.add(cakeBase);
+   const cakeTop=new T.Mesh(new T.CylinderGeometry(.32,.34,.12,16),material(0xf5e8db));
+   cakeTop.position.set(-.45,1.3,-2.35);g.add(cakeTop);
+   for(let i=0;i<3;i++){
+    const bowl=new T.Mesh(new T.CylinderGeometry(.15,.12,.14,10),material([0xe7a6b4,0xf0d4b5,0x9bc3d0][i]));
+    bowl.position.set(.25+i*.42,1.12,-2.35);g.add(bowl);
+   }
+   // Bandejas con dulces criollos y pequeños pastelitos.
+   for(let row=0;row<2;row++){
+    cube(g,1.55,.06,.62,0xb9c0c2,-.1,.65+row*.5,.65);
+    for(let i=0;i<4;i++){
+     const sweet=new T.Mesh(new T.SphereGeometry(.13,9,7),material([0xc98b52,0xe6c36b,0x8b4c35,0xe8d7bd][i]));
+     sweet.scale.set(1.2,.7,1);
+     sweet.position.set(-.65+i*.36,.78+row*.5,.65);
+     g.add(sweet);
+    }
+   }
+   // Estantería de cajas de repostería y envases.
+   for(let row=0;row<2;row++){
+    cube(g,1.45,.1,.58,0x805b3d,2.75,.55+row*.82,-2.45);
+    for(let i=0;i<3;i++)cube(g,.36,.32,.38,[0xf0e5d2,0xe8c9a8,0xf6eee2][i],2.25+i*.48,.78+row*.82,-2.45);
+   }
+   // Letrero mural de especialidades y lámparas cálidas.
+   cube(g,1.85,.92,.08,0x754b55,-2.45,2.05,front+.035);
+   for(let i=0;i<4;i++)cube(g,1.28,.055,.035,i%2?0xf3d8b7:0xfff1df,-2.45,2.34-i*.19,front+.085);
+   for(let i=0;i<3;i++){
+    cube(g,.035,.3,.035,0x34383a,-1.6+i*1.6,2.48,front+.38);
+    const bulb=new T.Mesh(new T.SphereGeometry(.1,8,6),lampMaterial);
+    bulb.position.set(-1.6+i*1.6,2.28,front+.38);g.add(bulb);
+   }
+  }
   if(data.id==='carniceria'||data.id==='pescaderia'){cube(g,1.65,.9,.9,0x9bbbc1,2.5,.55,-1.4);cube(g,1.7,.12,.94,0xeaf4f4,2.5,1.03,-1.4);for(let i=0;i<3;i++){const m=new T.Mesh(new T.SphereGeometry(.2,8,6),material(data.products[i][2]));m.position.set(2.15+i*.35,1.13,-1.4);g.add(m)}}
   // Equipos propios de los diez comercios de esta ampliación.
   if(data.id==='pollera'){cube(g,1.7,1.05,.9,0xb9d5d8,2.55,.6,-1.35);cube(g,1.72,.1,.92,0xf4f5ed,2.55,1.18,-1.35);for(let i=0;i<3;i++)cube(g,.42,.28,.42,0xe4cdb2,2.1+i*.45,1.38,-1.35)}
