@@ -45,7 +45,7 @@ const CATALOG = [
 
 // Coloca los comercios en solares libres junto a la vía, mirando hacia la calle.
 // Antes había 40 coordenadas fijas y 16 caían dentro de edificios del mapa real.
-function placeShops(world, count) {
+function placeShops(world, count, avoid = []) {
   const roads = world.roads || [], buildings = world.buildings || [];
   const spawn = world.spawn || [0, 0];
   const W = 8.2, D = 6.6, MIN_GAP = 20;
@@ -66,9 +66,14 @@ function placeShops(world, count) {
     return t > 0 && t < 1 && u > 0 && u < 1;
   };
   const overlaps = (rect, poly) => {
-    for (const p of rect) if (insidePoly(p[0], p[1], poly)) return true;
+    // Muestreo del interior del solar: un simple test de esquinas deja pasar
+    // solares metidos en patios interiores de edificios con forma de U.
     let rx0 = Infinity, rx1 = -Infinity, rz0 = Infinity, rz1 = -Infinity;
     for (const p of rect) { rx0 = Math.min(rx0, p[0]); rx1 = Math.max(rx1, p[0]); rz0 = Math.min(rz0, p[1]); rz1 = Math.max(rz1, p[1]); }
+    for (let i = 0; i <= 4; i++) for (let j = 0; j <= 4; j++) {
+      const x = rx0 + (rx1 - rx0) * i / 4, z = rz0 + (rz1 - rz0) * j / 4;
+      if (insidePoly(x, z, poly)) return true;
+    }
     for (let i = 0; i < poly.length; i += 2) {
       if (poly[i] > rx0 && poly[i] < rx1 && poly[i + 1] > rz0 && poly[i + 1] < rz1) return true;
     }
@@ -79,6 +84,13 @@ function placeShops(world, count) {
       }
     }
     return false;
+  };
+  const pathClear = (x0, z0, x1, z1) => {
+    for (let t = 0; t <= 1; t += .07) {
+      const x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t;
+      if (buildings.some(b => insidePoly(x, z, b.poly))) return false;
+    }
+    return true;
   };
   const slots = [];
   for (const r of roads) {
@@ -97,11 +109,14 @@ function placeShops(world, count) {
           const dist = Math.hypot(cx - spawn[0], cz - spawn[1]);
           if (dist < 45 || dist > 340) continue;
           if (slots.some(o => Math.hypot(o.x - cx, o.z - cz) < MIN_GAP)) continue;
+          if (avoid.some(o => Math.hypot(o.x - cx, o.z - cz) < 16)) continue;
           const rect = [[-1, -1], [-1, 1], [1, 1], [1, -1]].map(([a, b]) => [
             cx + dx * a * W / 2 + nx * side * b * D / 2,
             cz + dz * a * W / 2 + nz * side * b * D / 2
           ]);
           if (buildings.some(b => overlaps(rect, b.poly))) continue;
+          const frontX = cx - nx * side * D / 2, frontZ = cz - nz * side * D / 2;
+          if (!pathClear(frontX, frontZ, px, pz)) continue;
           slots.push({ x: cx, z: cz, rot: Math.atan2(dz * side, -dx * side), dist });
         }
       }
@@ -117,7 +132,9 @@ function placeShops(world, count) {
   return chosen;
 }
 
-export function createBusinessSystem(T, scene, colliders, world) {
+const FOOD = /plato|empanada|yaniqueque|tostones|quipe|pastelito|jugo|chinola|lechosa|tamarindo|limón|pan|bizcocho|galleta|dulce|leche|huevo|plátano|aguacate|yuca|tomate|pollo|carne|cerdo|chuleta|longaniza|pescado|camarón|filete|calamar|arroz|habichuela|queso|agua|fruta|vegetal/i;
+
+export function createBusinessSystem(T, scene, colliders, world, avoid = []) {
  const shops=[], matCache=new Map();
  const material=c=>{if(!matCache.has(c))matCache.set(c,new T.MeshLambertMaterial({color:c}));return matCache.get(c)};
  const cube=(parent,w,h,d,color,x,y,z)=>{const m=new T.Mesh(new T.BoxGeometry(w,h,d),material(color));m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m};
@@ -711,7 +728,7 @@ export function createBusinessSystem(T, scene, colliders, world) {
   const hours={open:data.open,close:data.close};
   return{data,g,worker,customer,phase:index*.8,clientPhase:index*.37,open:true,hours,stock:data.products.map(p=>12),sales:0};
  }
- const sites=placeShops(world,CATALOG.length);
+ const sites=placeShops(world,CATALOG.length,avoid);
  CATALOG.forEach((d,i)=>shops.push(build(d,sites[i]||sites[sites.length-1],i)));
  function setPanel(shop){active=shop;if(!panel)return;title.textContent=shop.data.name;info.textContent=shop.open?shop.data.detail+' · Abierto · '+money(economy.cash):'Este negocio está cerrado ahora.';products.replaceChildren();shop.data.products.forEach((p,i)=>{const b=document.createElement('button');b.className='business-buy';b.textContent=p[0]+' · '+money(p[1])+' · '+shop.stock[i]+' disp.';b.disabled=!shop.open||shop.stock[i]<=0||economy.cash<p[1];b.addEventListener('click',()=>{if(!active||!active.open||active.stock[i]<=0||economy.cash<p[1])return;economy.cash-=p[1];active.stock[i]--;economy.inventory[p[0]]=(economy.inventory[p[0]]||0)+1;active.sales++;save();setPanel(active)});products.appendChild(b)});panel.style.display='flex'}
  function closePanel(){active=null;if(panel)panel.style.display='none'}
@@ -729,5 +746,14 @@ export function createBusinessSystem(T, scene, colliders, world) {
   if(hud){hud.textContent='Comercios: '+shops.filter(s=>s.open).length+'/'+shops.length+' abiertos · '+money(economy.cash)+(nearbyShop?' · F: '+nearbyShop.data.kind:'')}
   if(active&&info){info.textContent=(active.open?'Abierto':'Cerrado')+' · '+active.data.detail+' · Empleado: '+active.data.task+' · Ventas simuladas: '+active.sales+' · '+money(economy.cash);if(!active.open)products.querySelectorAll('button').forEach(b=>b.disabled=true)}
  }
- return{update,interact,close:closePanel,shops};
+ function addCash(n){economy.cash=Math.max(0,economy.cash+n);save()}
+ function consume(name){
+  if(!economy.inventory[name]||economy.inventory[name]<=0)return false;
+  economy.inventory[name]--;if(economy.inventory[name]<=0)delete economy.inventory[name];save();return true;
+ }
+ function consumeFood(){
+  const name=Object.keys(economy.inventory).find(n=>FOOD.test(n));
+  if(!name)return null;consume(name);return name;
+ }
+ return{update,interact,close:closePanel,shops,getInventory:()=>economy.inventory,getCash:()=>economy.cash,addCash,consume,consumeFood,isFood:n=>FOOD.test(n)};
 }

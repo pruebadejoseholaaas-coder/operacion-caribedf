@@ -2,7 +2,7 @@
 
 Juego 3D de mundo abierto, inspirado en los grandes atracos, ambientado en la República Dominicana. Se juega en el navegador y más adelante como APK de Android.
 
-> **Estado:** prototipo 0.2. Zona Colonial de Santo Domingo con calles reales (OpenStreetMap), 40 comercios, habitantes con rutinas, tráfico con semáforos, minimapa y clima dinámico.
+> **Estado:** prototipo 0.3. Zona Colonial de Santo Domingo con calles reales (OpenStreetMap), 40 comercios, habitantes con rutinas, tráfico con semáforos, minimapa, clima dinámico, casa propia, teléfono, inventario y encargos de entrega.
 >
 > El estado detallado y verificado de cada fase está en [`OPERACION_CARIBE_PROGRESS.md`](OPERACION_CARIBE_PROGRESS.md).
 
@@ -15,7 +15,7 @@ npm run dev
 
 Abre la dirección que muestre la terminal. Desde el celular, en la misma red Wi-Fi, usa la dirección de red que aparece.
 
-**Controles:** WASD o flechas para moverte, Shift para correr, arrastrar para girar la cámara, E para subir o bajar del motoconcho, F para entrar a un comercio, M para abrir el mapa, T para saludar, Q para usar la habilidad del rol. En móvil: joystick y botones en pantalla; toca el minimapa para abrir el mapa.
+**Controles:** WASD o flechas para moverte, Shift para correr, arrastrar para girar la cámara, E para interactuar (moto, casa, cama, nevera...), F para entrar a un comercio, M para abrir el mapa, I para la mochila, P para el teléfono, T para saludar, Q para usar la habilidad del rol. En móvil: joystick y botones en pantalla; toca el minimapa para abrir el mapa.
 
 ## Publicar en la web (GitHub Pages)
 
@@ -27,7 +27,8 @@ Abre la dirección que muestre la terminal. Desde el celular, en la misma red Wi
 
 - [x] Fase 1: prototipo web (calle, personaje, peatones, vehículo)
 - [x] Ciudad real (OpenStreetMap), 40 comercios, tráfico con semáforos y minimapa
-- [ ] Casa del jugador, trabajos y misiones
+- [x] Casa del jugador con interior, teléfono, inventario y encargos de entrega
+- [ ] Trabajos con turnos, misiones encadenadas y transporte público con pasajeros
 - [ ] Audio ambiental y pruebas en Android
 - [ ] Fase 2: sistema de roles (Programador, Planificador, Conductor...)
 - [ ] Fase 3: primer asalto con motor de tramas y giros aleatorios
@@ -44,6 +45,8 @@ src/world.js      Carga del mapa real por sectores
 src/traffic.js    Grafo de calles, tráfico y semáforos
 src/businesses.js 40 comercios y economía
 src/minimap.js    Minimapa y mapa completo
+src/house.js      Casa del jugador e interior
+src/ui.js         Teléfono, mochila, avisos y HUD
 src/style.css     Estilos
 .github/          Publicación automática
 ```

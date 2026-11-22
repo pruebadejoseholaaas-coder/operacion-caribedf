@@ -92,6 +92,17 @@ export function createMinimap(world, sources, options = {}) {
       if (dx * dx + dz * dz > 2600) continue;
       ctx.beginPath(); ctx.arc(n.g.position.x, n.g.position.z, 1.1, 0, Math.PI * 2); ctx.fill();
     }
+    const home = sources.home ? sources.home() : null;
+    if (home) {
+      ctx.fillStyle = '#7fe0a8';
+      ctx.beginPath(); ctx.arc(home.x, home.z, 2.8, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#10241a'; ctx.lineWidth = .8; ctx.stroke();
+    }
+    const job = sources.job ? sources.job() : null;
+    if (job) {
+      ctx.strokeStyle = '#4fb3ff'; ctx.lineWidth = 1.8;
+      ctx.beginPath(); ctx.arc(job.x, job.z, 4.2 + Math.sin(now / 240) * .8, 0, Math.PI * 2); ctx.stroke();
+    }
     const goal = sources.goal ? sources.goal() : null;
     if (goal) {
       const pulse = 3.4 + Math.sin(now / 260) * 1.1;
@@ -135,6 +146,19 @@ export function createMinimap(world, sources, options = {}) {
       b.fillStyle = shop.open ? openColor : closedColor;
       b.beginPath(); b.arc(x, y, 3, 0, Math.PI * 2); b.fill();
     }
+    const home = sources.home ? sources.home() : null;
+    if (home) {
+      const [x, y] = P(home.x, home.z);
+      b.fillStyle = '#7fe0a8'; b.beginPath(); b.arc(x, y, 4, 0, Math.PI * 2); b.fill();
+      b.fillStyle = '#c9f5dc'; b.font = 'bold 11px Trebuchet MS'; b.textAlign = 'center';
+      b.fillText('Casa', x, y + 16);
+    }
+    const job = sources.job ? sources.job() : null;
+    if (job) {
+      const [x, y] = P(job.x, job.z);
+      b.strokeStyle = '#4fb3ff'; b.lineWidth = 2.5;
+      b.beginPath(); b.arc(x, y, 7, 0, Math.PI * 2); b.stroke();
+    }
     const goal = sources.goal ? sources.goal() : null;
     if (goal) {
       const [x, y] = P(goal.x, goal.z);
@@ -163,5 +187,6 @@ export function createMinimap(world, sources, options = {}) {
     wrap.style.display = showBig ? 'flex' : 'none';
   }
   document.getElementById('bigmap-close')?.addEventListener('click', () => toggle(false));
-  return { update, toggle, isOpen: () => showBig };
+  function setVisible(v) { small.style.display = v ? 'block' : 'none'; }
+  return { update, toggle, setVisible, isOpen: () => showBig };
 }
