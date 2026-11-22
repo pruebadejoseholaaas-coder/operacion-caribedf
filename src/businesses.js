@@ -136,6 +136,7 @@ const FOOD = /plato|empanada|yaniqueque|tostones|quipe|pastelito|jugo|chinola|le
 
 export function createBusinessSystem(T, scene, colliders, world, avoid = []) {
  const shops=[], matCache=new Map();
+ const W=8.2,D=6.6;
  const material=c=>{if(!matCache.has(c))matCache.set(c,new T.MeshLambertMaterial({color:c}));return matCache.get(c)};
  const cube=(parent,w,h,d,color,x,y,z)=>{const m=new T.Mesh(new T.BoxGeometry(w,h,d),material(color));m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m};
  const panel=document.getElementById('business-panel');
@@ -144,11 +145,12 @@ export function createBusinessSystem(T, scene, colliders, world, avoid = []) {
  const products=document.getElementById('business-products');
  const close=document.getElementById('business-close');
  const hud=document.getElementById('business-hud');
- let active=null;
+ let active=null,insideShop=null;
  let economy={cash:2500,inventory:{}};
  try{const old=JSON.parse(localStorage.getItem('operacion-caribe-economy-v1')||'null');if(old&&Number.isFinite(old.cash))economy={cash:old.cash,inventory:old.inventory||{}}}catch{}
  const save=()=>{try{localStorage.setItem('operacion-caribe-economy-v1',JSON.stringify(economy))}catch{}};
  const money=n=>'RD$ '+Math.round(n).toLocaleString('es-DO');
+ const shopLight=new T.PointLight(0xffe0a8,0,15,2);scene.add(shopLight);
  // Acabado interior compartido para que los comercios se distingan también por dentro.
  const floorCanvas=document.createElement('canvas');floorCanvas.width=floorCanvas.height=128;
  const floorCtx=floorCanvas.getContext('2d');
@@ -161,8 +163,8 @@ export function createBusinessSystem(T, scene, colliders, world, avoid = []) {
  const floorMaterial=new T.MeshLambertMaterial({map:floorTexture});
  const lampMaterial=new T.MeshBasicMaterial({color:0xffe8ad});
  function signTexture(text,color){const c=document.createElement('canvas');c.width=512;c.height=112;const x=c.getContext('2d');x.fillStyle='#'+color.toString(16).padStart(6,'0');x.fillRect(0,0,512,112);x.strokeStyle='#fff0c9';x.lineWidth=7;x.strokeRect(6,6,500,100);x.fillStyle='#fff';x.font='bold 34px Trebuchet MS';x.textAlign='center';x.textBaseline='middle';x.fillText(text,256,56,470);return new T.CanvasTexture(c)}
- function person(parent,shirt,skin=0x9b684b){const g=new T.Group();parent.add(g);cube(g,.58,.82,.34,shirt,0,1.2,0);const head=new T.Mesh(new T.SphereGeometry(.22,10,8),material(skin));head.position.y=1.82;g.add(head);cube(g,.18,.55,.2,0x26364a,-.16,.5,0);cube(g,.18,.55,.2,0x26364a,.16,.5,0);const a=cube(g,.14,.62,.14,shirt,-.38,1.28,0),b=cube(g,.14,.62,.14,shirt,.38,1.28,0);return{g,a,b,phase:Math.random()*6}}
- function transformedBoxCollider(group,w,h,d,x,y,z){const c=Math.cos(group.rotation.y),s=Math.sin(group.rotation.y),corners=[[-w/2,-d/2],[w/2,-d/2],[w/2,d/2],[-w/2,d/2]].map(([lx,lz])=>[group.position.x+lx*c+lz*s+x,group.position.z-lx*s+lz*c+z]);const xs=corners.map(p=>p[0]),zs=corners.map(p=>p[1]),poly=corners.flat();colliders.push({x0:Math.min(...xs),x1:Math.max(...xs),z0:Math.min(...zs),z1:Math.max(...zs),poly})}
+ function person(parent,shirt,skin=0x9b684b){const g=new T.Group();parent.add(g);cube(g,.58,.82,.34,shirt,0,1.2,0);const head=new T.Mesh(new T.SphereGeometry(.22,10,8),material(skin));head.position.y=1.82;g.add(head);const l=cube(g,.18,.55,.2,0x26364a,-.16,.5,0),r=cube(g,.18,.55,.2,0x26364a,.16,.5,0);const a=cube(g,.14,.62,.14,shirt,-.38,1.28,0),b=cube(g,.14,.62,.14,shirt,.38,1.28,0);return{g,a,b,l,r,phase:Math.random()*6}}
+ function transformedBoxCollider(group,w,h,d,x,y,z){const c=Math.cos(group.rotation.y),s=Math.sin(group.rotation.y),corners=[[-w/2,-d/2],[w/2,-d/2],[w/2,d/2],[-w/2,d/2]].map(([lx,lz])=>{const ax=lx+x,az=lz+z;return[group.position.x+ax*c+az*s,group.position.z-ax*s+az*c]});const xs=corners.map(p=>p[0]),zs=corners.map(p=>p[1]),poly=corners.flat();colliders.push({x0:Math.min(...xs),x1:Math.max(...xs),z0:Math.min(...zs),z1:Math.max(...zs),poly})}
  function build(data,site,index){
   const {x,z,rot}=site,g=new T.Group();g.position.set(x,0,z);g.rotation.y=rot;scene.add(g);
   const W=8.2,D=6.6,wall=.22,front=D/2;
@@ -721,30 +723,87 @@ export function createBusinessSystem(T, scene, colliders, world, avoid = []) {
   // Pequeñas diferencias de fachada: toldos, aleros y marquesinas de barrio.
   if(['fruteria','vivero','floristeria','agropecuaria'].includes(data.id)){cube(g,W+.25,.16,.9,data.trim,0,2.45,front+.38);for(let i=0;i<5;i++)cube(g,1.62,.025,.92,i%2?0xf4e8d2:data.trim,-3.3+i*1.65,2.55,front+.38)}
   if(['hielo','agua','pollera'].includes(data.id)){cube(g,W,.18,.55,0xdcebef,0,2.98,front+.18);cube(g,.18,2.5,.18,data.trim,-W/2+.2,1.35,front+.2);cube(g,.18,2.5,.18,data.trim,W/2-.2,1.35,front+.2)}
-  const worker=person(g,data.trim),customer=person(g,0x3b6e87,0xb57b58);customer.g.position.set(0,0,2.35);
+  cube(g,W+.2,.18,D+.2,data.trim,0,2.9,0);
+  cube(g,1.6,.03,1.1,0xb04a3a,0,.19,front+.25);
+  const worker=person(g,data.trim);
+  const visitors=[];
+  for(let i=0;i<2;i++){
+   const v=person(g,[0x3b6e87,0xc85a4a,0x4f8b6a,0x9b6a3f][i]);
+   v.g.position.set(0,0,front+2.6);v.g.visible=false;
+   v.state='idle';v.t=0;v.tx=0;v.tz=0;v.sx=0;v.walk=0;
+   visitors.push(v);
+  }
   transformedBoxCollider(g,W,.2,.22,0,0,-D/2);
   transformedBoxCollider(g,.22,.2,D,-W/2,0,0);transformedBoxCollider(g,.22,.2,D,W/2,0,0);
+  // Mostrador, estantería y neveras sólidos; la entrada central queda libre.
+  transformedBoxCollider(g,2.3,.9,.8,0,0,.75);
+  transformedBoxCollider(g,2.2,.9,.9,-2.65,0,-2.4);
+  transformedBoxCollider(g,1.0,.9,2.4,2.6,0,-1.3);
+  transformedBoxCollider(g,1.75,.2,.15,-2.45,0,front-.12);
+  transformedBoxCollider(g,1.75,.2,.15,2.45,0,front-.12);
   // El mostrador divide el área, pero deja un paso frontal para entrar.
   const hours={open:data.open,close:data.close};
-  return{data,g,worker,customer,phase:index*.8,clientPhase:index*.37,open:true,hours,stock:data.products.map(p=>12),sales:0};
+  return{data,g,worker,visitors,phase:index*.8,visitorT:2+Math.random()*10,open:true,hours,stock:data.products.map(p=>12),sales:0,visits:0,revenue:0};
  }
  const sites=placeShops(world,CATALOG.length,avoid);
  CATALOG.forEach((d,i)=>shops.push(build(d,sites[i]||sites[sites.length-1],i)));
- function setPanel(shop){active=shop;if(!panel)return;title.textContent=shop.data.name;info.textContent=shop.open?shop.data.detail+' · Abierto · '+money(economy.cash):'Este negocio está cerrado ahora.';products.replaceChildren();shop.data.products.forEach((p,i)=>{const b=document.createElement('button');b.className='business-buy';b.textContent=p[0]+' · '+money(p[1])+' · '+shop.stock[i]+' disp.';b.disabled=!shop.open||shop.stock[i]<=0||economy.cash<p[1];b.addEventListener('click',()=>{if(!active||!active.open||active.stock[i]<=0||economy.cash<p[1])return;economy.cash-=p[1];active.stock[i]--;economy.inventory[p[0]]=(economy.inventory[p[0]]||0)+1;active.sales++;save();setPanel(active)});products.appendChild(b)});panel.style.display='flex'}
+ function setPanel(shop){active=shop;if(!panel)return;title.textContent=shop.data.name;info.textContent=shop.open?shop.data.detail+' · Abierto · '+money(economy.cash):'Este negocio está cerrado ahora.';products.replaceChildren();shop.data.products.forEach((p,i)=>{const b=document.createElement('button');b.className='business-buy';b.textContent=p[0]+' · '+money(p[1])+' · '+shop.stock[i]+' disp.';b.disabled=!shop.open||shop.stock[i]<=0||economy.cash<p[1];b.addEventListener('click',()=>{if(!active||!active.open||active.stock[i]<=0||economy.cash<p[1])return;economy.cash-=p[1];active.stock[i]--;economy.inventory[p[0]]=(economy.inventory[p[0]]||0)+1;active.sales++;active.revenue+=p[1];save();setPanel(active)});products.appendChild(b)});panel.style.display='flex'}
  function closePanel(){active=null;if(panel)panel.style.display='none'}
  close?.addEventListener('click',closePanel);
  function interact(pos){let nearest=null,best=9;for(const s of shops){const d=Math.hypot(pos.x-s.g.position.x,pos.z-s.g.position.z);if(d<best){best=d;nearest=s}}if(nearest){setPanel(nearest);return true}return false}
  function update(dt,pos,clock){
+  insideShop=null;
   const hour=Math.floor(clock/3600),minute=Math.floor(clock%3600/60),time=hour+minute/60;
   let nearbyShop=null,nearDistance=9;
   for(const s of shops){const {data}=s;const distance=Math.hypot(pos.x-s.g.position.x,pos.z-s.g.position.z);if(distance<nearDistance){nearDistance=distance;nearbyShop=s}s.open=data.close<data.open?(time>=data.open||time<data.close):(time>=data.open&&time<data.close);s.phase+=dt;
-   s.g.visible=distance<260;s.worker.g.visible=s.open&&distance<85;s.customer.g.visible=s.open&&distance<85&&Math.sin(s.phase*.23)>.15;
+   s.g.visible=distance<260;s.worker.g.visible=s.open&&distance<85;
    const stations=[[-2.4,-.65],[0,-.65],[2.3,-.65]],target=stations[Math.floor(s.phase/5)%stations.length];s.worker.g.position.x+=(target[0]-s.worker.g.position.x)*(1-Math.exp(-dt*1.7));s.worker.g.position.z+=(target[1]-s.worker.g.position.z)*(1-Math.exp(-dt*1.7));s.worker.a.rotation.x=Math.sin(s.phase*3)*.55;s.worker.b.rotation.x=-Math.sin(s.phase*3)*.55;
-   const walk=(s.clientPhase+=dt*.12)%1;s.customer.g.position.x=Math.sin(walk*Math.PI*2)*.8;s.customer.g.position.z=2.35-Math.sin(walk*Math.PI)*.8;s.customer.a.rotation.x=Math.sin(s.phase*2)*.3;s.customer.b.rotation.x=-s.customer.a.rotation.x;
+   // Clientes: entran desde la acera, compran en el mostrador y salen.
+   if(distance<120){
+    s.visitorT-=dt;
+    if(s.open&&s.visitorT<=0&&s.visitors.some(v=>v.state==='idle')){
+     const v=s.visitors.find(v=>v.state==='idle');
+     v.state='entering';v.sx=(Math.random()*2-1)*1.2;v.tx=(Math.random()*2-1)*1.0;v.tz=1.55;v.t=0;v.walk=0;
+     v.g.position.set(v.sx,0,D/2+2.6);v.g.rotation.y=Math.PI;v.g.visible=true;
+     s.visitorT=8+Math.random()*12;
+    }
+    for(const v of s.visitors){
+     if(v.state==='idle'){v.g.visible=false;continue}
+     v.g.visible=true;
+     const tx=v.state==='leaving'?v.sx:v.tx,tz=v.state==='leaving'?D/2+2.8:v.tz;
+     const dx=tx-v.g.position.x,dz=tz-v.g.position.z,dist=Math.hypot(dx,dz);
+     if(v.state==='buying'){
+      v.t-=dt;
+      v.a.rotation.x=-.95+Math.sin(s.phase*8)*.15;v.b.rotation.x=-.35;
+      if(v.t<=0){
+       const avail=[...s.stock.keys()].filter(i=>s.stock[i]>0);
+       if(avail.length){const i=avail[Math.floor(Math.random()*avail.length)];s.stock[i]--;s.sales++;s.visits++;s.revenue+=s.data.products[i][1]}
+       v.state='leaving';v.g.rotation.y=0;
+      }
+     } else if(dist>.08){
+      const step=Math.min(dist,1.15*dt);
+      v.g.position.x+=dx/dist*step;v.g.position.z+=dz/dist*step;
+      v.g.rotation.y=Math.atan2(dx,dz);
+      v.walk+=dt*7;
+      v.a.rotation.x=Math.sin(v.walk)*.45;v.b.rotation.x=-Math.sin(v.walk)*.45;
+      v.l.rotation.x=Math.sin(v.walk)*.5;v.r.rotation.x=-Math.sin(v.walk)*.5;
+     } else if(v.state==='entering'){
+      v.state='buying';v.t=1.8+Math.random()*1.5;v.g.rotation.y=Math.PI;
+      v.a.rotation.x=v.b.rotation.x=0;v.l.rotation.x=v.r.rotation.x=0;
+     } else if(v.state==='leaving'){
+      v.state='idle';v.g.visible=false;
+     }
+    }
+   } else for(const v of s.visitors)v.g.visible=false;
+   // Una sola luz dinámica para el comercio en el que está el jugador.
+   const c=Math.cos(-s.g.rotation.y),sn=Math.sin(-s.g.rotation.y),dx=pos.x-s.g.position.x,dz=pos.z-s.g.position.z;
+   const lx=dx*c-dz*sn,lz=dx*sn+dz*c;
+   if(Math.abs(lx)<3.75&&Math.abs(lz)<2.95&&distance<9){insideShop=s;shopLight.position.set(s.g.position.x,2.25,s.g.position.z);shopLight.intensity=1.25}
    s.g.visible=distance<260;
   }
+  if(!insideShop)shopLight.intensity=0;
   if(hud){hud.textContent='Comercios: '+shops.filter(s=>s.open).length+'/'+shops.length+' abiertos · '+money(economy.cash)+(nearbyShop?' · F: '+nearbyShop.data.kind:'')}
-  if(active&&info){info.textContent=(active.open?'Abierto':'Cerrado')+' · '+active.data.detail+' · Empleado: '+active.data.task+' · Ventas simuladas: '+active.sales+' · '+money(economy.cash);if(!active.open)products.querySelectorAll('button').forEach(b=>b.disabled=true)}
+  if(active&&info){info.textContent=(active.open?'Abierto':'Cerrado')+' · '+active.data.detail+' · Empleado: '+active.data.task+' · Clientes: '+active.visits+' · Ventas: '+active.sales+' · Ingresos: '+money(active.revenue)+' · '+money(economy.cash);if(!active.open)products.querySelectorAll('button').forEach(b=>b.disabled=true)}
  }
  function addCash(n){economy.cash=Math.max(0,economy.cash+n);save()}
  function consume(name){
@@ -755,5 +814,5 @@ export function createBusinessSystem(T, scene, colliders, world, avoid = []) {
   const name=Object.keys(economy.inventory).find(n=>FOOD.test(n));
   if(!name)return null;consume(name);return name;
  }
- return{update,interact,close:closePanel,shops,getInventory:()=>economy.inventory,getCash:()=>economy.cash,addCash,consume,consumeFood,isFood:n=>FOOD.test(n)};
+ return{update,interact,close:closePanel,shops,getInventory:()=>economy.inventory,getCash:()=>economy.cash,addCash,consume,consumeFood,isFood:n=>FOOD.test(n),insideShop:()=>insideShop};
 }
