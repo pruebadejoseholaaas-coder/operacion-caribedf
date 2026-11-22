@@ -154,13 +154,16 @@ function makeTrafficVehicle(type,color){
  }
  scene.add(g);g.userData.wheels=wheels;return g
 }
-function activateCityLife(roads){
+function activateCityLife(roads,centerX=player.g.position.x,centerZ=player.g.position.z){
  const segments=roadSegments(roads,4),sidewalks=segments.filter(s=>s.width>=5&&s.width<=14);
  if(!segments.length)return;
  pedestrianRoutes=npcs.map((n,i)=>{const s=sidewalks[i%Math.max(1,sidewalks.length)]||segments[i%segments.length];const dx=(s.bx-s.ax)/s.len,dz=(s.bz-s.az)/s.len,nx=-dz,nz=dx,side=i%2?1:-1,off=s.width/2+1.35;const a={x:s.ax+dx*s.len*.18+nx*off*side,z:s.az+dz*s.len*.18+nz*off*side},b={x:s.bx-dx*s.len*.18+nx*off*side,z:s.bz-dz*s.len*.18+nz*off*side};return{a,b}});
  npcs.forEach((n,i)=>{const r=pedestrianRoutes[i];n.route=r;n.progress=Math.random();n.dir=Math.random()<.5?1:-1;n.sp=.65+Math.random()*.45;n.g.visible=true;n.g.position.set(r.a.x+(r.b.x-r.a.x)*n.progress,0,r.a.z+(r.b.z-r.a.z)*n.progress)});
  const colors=[0xe76f51,0xf2c14e,0x2a9d8f,0xeeeeee,0x334455,0x9b5de5,0xffffff,0xce1126],types=['car','taxi','moto','guagua'];
- for(let i=0;i<Math.min(mobileDevice?7:12,segments.length);i++){const s=segments[(i*7+2)%segments.length],type=types[i%types.length],car=makeTrafficVehicle(type,colors[i%colors.length]);const lane=(i%2?1:-1)*Math.max(.7,Math.min(2,s.width*.17));traffic.push({g:car,s,progress:(i/12+Math.random()*.08)%1,speed:(type==='moto'?5.2:type==='guagua'?2.8:3.8)+(i%3)*.65,lane})}
+ const nearby=segments.filter(s=>Math.hypot((s.ax+s.bx)/2-centerX,(s.az+s.bz)/2-centerZ)<150);
+ const trafficSegments=(nearby.length?nearby:segments).slice().sort((a,b)=>Math.hypot((a.ax+a.bx)/2-centerX,(a.az+a.bz)/2-centerZ)-Math.hypot((b.ax+b.bx)/2-centerX,(b.az+b.bz)/2-centerZ));
+ const count=Math.min(mobileDevice?7:14,trafficSegments.length);
+ for(let i=0;i<count;i++){const s=trafficSegments[Math.floor(i*trafficSegments.length/count)],type=types[i%types.length],car=makeTrafficVehicle(type,colors[i%colors.length]);const lane=(i%2?1:-1)*Math.max(.7,Math.min(2,s.width*.17));traffic.push({g:car,s,progress:(i/count+Math.random()*.08)%1,speed:(type==='moto'?5.2:type==='guagua'?2.8:3.8)+(i%3)*.65,lane})}
 }
 
 
@@ -350,7 +353,6 @@ loadWorld(T,scene,colliders).then(w=>{if(!w)return;world=w;
  scene.children.slice(legacyStart+1,legacyEnd).forEach(o=>o.visible=false);
  ground.material.map=null;ground.material.color.set(0x8f8a7e);ground.material.needsUpdate=true;
  colliders.length=0;lim.x=w.lim.x;lim.z=w.lim.z;
- activateCityLife(w.roads||[]);
  businessSystem=createBusinessSystem(T,scene,colliders);
  player.g.position.set(w.spawn[0],0,w.spawn[1]);moto.position.set(w.spawn[0]+2,0,w.spawn[1]);
  GOAL.set(w.goal[0],0,w.goal[1]);beam.position.set(w.goal[0],40,w.goal[1]);
@@ -365,6 +367,7 @@ loadWorld(T,scene,colliders).then(w=>{if(!w)return;world=w;
    if(Number.isFinite(saved.yaw))yaw=saved.yaw;
    if(Number.isFinite(saved.pitch))pitch=Math.max(.08,Math.min(1.2,saved.pitch));
  }
+ activateCityLife(w.roads||[],player.g.position.x,player.g.position.z);
  const savedRole=ROLES.find(r=>r.id===saved?.roleId);if(savedRole)pick(savedRole);
  $('mission').textContent=missionDone?'Objetivo completado · Explora la ciudad':'Objetivo: llega al punto de encuentro';
  saveGame();
