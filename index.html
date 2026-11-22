@@ -7,11 +7,13 @@
 </head>
 <body>
 <div class="p" id="t"><b>Operación Caribe</b><small>Zona Colonial, Santo Domingo · prototipo 0.1</small></div>
-<div class="p" id="c">Mover: WASD o flechas<br>Correr: Shift<br>Cámara: arrastra el ratón<br>Motoconcho: E (W/S acelerar, A/D girar, Espacio derrape)<br>Habilidad: Q<br>Cambiar rol: R</div>
+<div class="p" id="c">Mover: WASD o flechas<br>Correr: Shift<br>Cámara: arrastra el ratón<br>Motoconcho: E (W/S acelerar, A/D girar, Espacio derrape)<br>Negocios: F para comprar<br>Habilidad: Q<br>Cambiar rol: R</div>
 <div class="p" id="h"></div>
 <div class="p" id="mission">Cargando objetivo...</div>
 <div class="p" id="world-state">08:00 · Soleado</div>
 <div class="p" id="npc-talk" aria-live="polite"></div>
+<div class="p" id="business-hud">Comercios: cargando...</div>
+<div id="business-panel" role="dialog" aria-modal="true" aria-labelledby="business-title"><div class="business-card"><button id="business-close" type="button">Cerrar ✕</button><h2 id="business-title">Negocio</h2><p id="business-info"></p><div id="business-products"></div></div></div>
 <button class="p" id="sound-toggle" type="button">Voces: activas</button>
 <div class="p" id="ab" style="display:none"></div>
 <div class="p" id="feed" style="display:none"></div>
@@ -19,6 +21,7 @@
 <div id="stick"><div id="knob"></div></div>
 <button class="b" id="bE" style="bottom:calc(env(safe-area-inset-bottom,0px) + 100px)">Subir</button>
 <button class="b" id="bR" style="bottom:calc(env(safe-area-inset-bottom,0px) + 28px)">Correr</button>
+<button class="b" id="bF" style="bottom:calc(env(safe-area-inset-bottom,0px) + 172px)">Tienda</button>
 <button class="b" id="bQ" style="bottom:calc(env(safe-area-inset-bottom,0px) + 64px);right:96px">Q</button>
 <script type="module" src="/src/main.js"></script>
 </body>
