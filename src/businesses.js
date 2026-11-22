@@ -19,7 +19,17 @@ const CATALOG = [
  {id:'agua',name:'Agua Clara Purificada',kind:'AGUA PURIFICADA',open:6,close:20,wall:0xc6e2e4,trim:0x267d8a,task:'llena botellones',products:[['Botellón lleno',65,0x67b6ca],['Botella pequeña',20,0x8dcfe0],['Dispensador',1250,0xe1ecee],['Botellón vacío',250,0x70b9cb]],detail:'Filtros, depósitos, botellones y mostrador de llenado'},
  {id:'sastreria',name:'Sastrería Don Ramón',kind:'SASTRERÍA',open:8,close:19,wall:0xd8c9b6,trim:0x536b80,task:'cose una prenda',products:[['Ajuste de pantalón',250,0x59616b],['Camisa a medida',950,0x9eb6c4],['Dobladillo',120,0xb29b79],['Reparación de ropa',180,0x8b6d55]],detail:'Máquinas de coser, telas, maniquíes y prendas'},
  {id:'modisteria',name:'Modistería Yanelis',kind:'MODISTERÍA',open:8,close:18,wall:0xe5c6b5,trim:0x9a5674,task:'corta patrones de tela',products:[['Vestido personalizado',1450,0xc77d9a],['Uniforme escolar',850,0x637b9b],['Blusa',650,0xd3a5ae],['Arreglo de vestido',300,0x9a7890]],detail:'Mesa de corte, patrones, telas y máquinas de coser'},
- {id:'zapateria',name:'Zapatería El Buen Paso',kind:'ZAPATERÍA',open:8,close:19,wall:0xd9c3a5,trim:0x825735,task:'repara calzado',products:[['Reparación de suela',280,0x65483a],['Pegado de zapato',180,0x8a6047],['Cordones',75,0xc2a47b],['Plantillas',140,0x9d8a71]],detail:'Estantes de zapatos, hormas, herramientas y banco de reparación'}
+ {id:'zapateria',name:'Zapatería El Buen Paso',kind:'ZAPATERÍA',open:8,close:19,wall:0xd9c3a5,trim:0x825735,task:'repara calzado',products:[['Reparación de suela',280,0x65483a],['Pegado de zapato',180,0x8a6047],['Cordones',75,0xc2a47b],['Plantillas',140,0x9d8a71]],detail:'Estantes de zapatos, hormas, herramientas y banco de reparación'},
+{id:'talabarteria',name:'Talabartería Cuero Criollo',kind:'TALABARTERÍA',open:8,close:18,wall:0xc9a77c,trim:0x70452e,task:'corta y cose artículos de cuero',products:[['Cinturón artesanal',650,0x805033],['Cartera de cuero',1450,0x9a6746],['Correa',480,0x70452e],['Reparación de cartera',350,0xb28a62]],detail:'Pieles enrolladas, moldes, hebillas, mesa de corte y artículos terminados'},
+ {id:'ebanisteria',name:'Ebanistería Los Hermanos',kind:'EBANISTERÍA',open:7,close:18,wall:0xd0b18a,trim:0x765034,task:'lija y ensambla muebles',products:[['Silla de madera',1850,0x9b6a3f],['Mesa pequeña',4200,0x805331],['Puerta',6800,0x9a714b],['Reparación de mueble',950,0xb58b61]],detail:'Bancos de trabajo, tablones, muebles en proceso y estantes de herramientas'},
+ {id:'tapiceria',name:'Tapicería Nuevo Estilo',kind:'TAPICERÍA',open:8,close:18,wall:0xd6c4b4,trim:0x8b5d79,task:'corta tela y tapiza muebles',products:[['Tapizado de silla',850,0x9a7185],['Tapizado de sofá',4800,0x526b7d],['Cojín',450,0xd2a77d],['Cambio de espuma',1200,0xb9b2a7]],detail:'Sofás, espuma, rollos de tela, máquina de coser y muebles en reparación'},
+ {id:'herreria',name:'Herrería El Martillo',kind:'HERRERÍA',open:7,close:17,wall:0xb8b9b6,trim:0x4c5961,task:'ensambla piezas metálicas',products:[['Reja sencilla',3800,0x59636a],['Portón',12500,0x414b52],['Protector de ventana',2900,0x6d777d],['Reparación metálica',900,0x8a9296]],detail:'Perfiles metálicos, rejas, banco de trabajo y área de ensamblaje'},
+ {id:'aluminio',name:'Aluminios y Cristales del Caribe',kind:'ALUMINIO Y CRISTALERÍA',open:8,close:18,wall:0xc8d6dc,trim:0x397c91,task:'mide y prepara marcos',products:[['Ventana de aluminio',4200,0x9bb8c5],['Puerta corrediza',8900,0x7d9eaa],['Cristal a medida',2100,0xb9dce8],['Reparación de ventana',750,0x7796a2]],detail:'Perfiles de aluminio, cristales, marcos, muestras de ventanas y mesa de medición'},
+ {id:'electrodomesticos',name:'Servicio Técnico El Hogar',kind:'REPARACIÓN DE ELECTRODOMÉSTICOS',open:8,close:18,wall:0xc8d0d4,trim:0x3d687c,task:'revisa aparatos eléctricos',products:[['Diagnóstico',350,0x7999a8],['Reparación de abanico',650,0x8c9ca3],['Servicio de lavadora',1250,0x627c8c],['Revisión de nevera',950,0x9fb8c0]],detail:'Abanicos, televisores, lavadoras, piezas y bancos de reparación'},
+ {id:'celulares',name:'Móvil Express',kind:'TIENDA DE CELULARES',open:9,close:20,wall:0xc7c9dc,trim:0x535d9b,task:'muestra teléfonos y accesorios',products:[['Teléfono básico',4200,0x444b56],['Funda',350,0xd46e91],['Cargador',550,0xe0e0e0],['Audífonos',650,0x343a43]],detail:'Vitrinas iluminadas, teléfonos de muestra, fundas, cargadores y audífonos'},
+ {id:'reparacion-celulares',name:'Tecno Soluciones RD',kind:'REPARACIÓN DE CELULARES',open:9,close:19,wall:0xcbd6dc,trim:0x267d8a,task:'diagnostica y prueba celulares',products:[['Diagnóstico móvil',250,0x8bb8c2],['Cambio de pantalla',1850,0x5e7580],['Cambio de batería',950,0x9cb2a0],['Limpieza de puerto',400,0x657b86]],detail:'Mesas de precisión, teléfonos en revisión, repuestos y vitrinas'},
+ {id:'internet',name:'Centro Digital Conecta',kind:'INTERNET Y COPIADO',open:8,close:21,wall:0xd1d7e2,trim:0x3c6795,task:'imprime y escanea documentos',products:[['Una impresión',10,0xf2f2ee],['Fotocopia',5,0xe6e1d7],['Escaneo',25,0x9bb6c8],['Una hora de internet',40,0x4c789d]],detail:'Computadoras, impresoras, fotocopiadora, escáner y escritorios'},
+ {id:'imprenta',name:'Imprenta La Nacional',kind:'IMPRENTA',open:8,close:18,wall:0xd9c9b7,trim:0x9a563d,task:'prepara e imprime pedidos',products:[['Tarjetas de presentación',650,0xe5d7c3],['Volantes',950,0xf0e6d5],['Afiches',450,0xc86a50],['Invitaciones',1200,0xd6a5a0]],detail:'Impresoras, resmas de papel, tintas, mesa de corte y pedidos empacados'}
 ];
 
 const SITES = [
@@ -42,7 +52,17 @@ const SITES = [
  [-43.9319,-225.6039,.9997,.0237,1],
  [140.4154,-188.3196,.9901,.1407,1],
  [-150.3262,-173.2323,.962,-.2731,1],
- [-94.7752,-219.3287,.2598,-.9657,-1]
+ [-94.7752,-219.3287,.2598,-.9657,-1],
+ [-118.4,42.6,.98,.18,1],
+ [-112.2,119.8,.12,.99,-1],
+ [-8.5,154.2,.96,-.28,1],
+ [132.4,72.6,.21,.98,-1],
+ [165.2,12.8,.99,.1,1],
+ [-184.3,22.5,.94,-.34,-1],
+ [4.8,-142.5,.18,.98,1],
+ [154.6,-112.2,.97,.22,-1],
+ [-190.4,-92.7,.24,-.97,1],
+ [12.6,214.3,.99,.05,-1]
 ];
 
 export function createBusinessSystem(T, scene, colliders) {
@@ -98,6 +118,61 @@ export function createBusinessSystem(T, scene, colliders) {
   if(data.id==='hielo'||data.id==='agua'){for(let i=0;i<2;i++){cube(g,1.1,1.9,.9,data.id==='hielo'?0x9ed8e8:0x6cb9c9,2.65,1,-1.65+i*1.2);cube(g,1.12,.12,.94,0xe7f4f4,2.65,1.98,-1.65+i*1.2)}if(data.id==='agua'){const tank=new T.Mesh(new T.CylinderGeometry(.48,.48,1.5,12),material(0x91c6d0));tank.position.set(-2.5,.85,-1.7);g.add(tank)}}
   if(data.id==='sastreria'||data.id==='modisteria'){cube(g,2.1,.18,1.15,0x9b7654,-2.4,.78,-.8);for(let i=0;i<3;i++){cube(g,.5,.95,.08,data.products[i][2],2.35,.95,-2.2+i*.5)}cube(g,.75,.72,.6,0x485363,.9,.45,-1.75);cube(g,.18,.9,.18,0x777777,.9,1,-1.75)}
   if(data.id==='zapateria'){cube(g,2.1,.16,.8,0x8c6748,2.5,.65,-1.5);for(let row=0;row<2;row++)for(let i=0;i<3;i++)cube(g,.48,.22,.22,data.products[(row+i)%4][2],1.8+i*.55,.85+row*.4,-1.5);cube(g,.8,.55,.65,0x76543b,-2.6,.35,-1.3)}
+  // Equipamiento artesanal y técnico propio de los negocios 21 al 30.
+  if(data.id==='talabarteria'){
+   for(let i=0;i<4;i++){cube(g,.62,.12,.9,0x805033,-3+i*1.1,.9,-1.8);cube(g,.5,.8,.08,0x9a6746,-3+i*1.1,1.35,-1.8)}
+   for(let i=0;i<3;i++)cube(g,.18,.75,.18,0x6b4934,2.3+i*.55,.45,-2.1);
+   cube(g,1.3,.12,.9,0x9b7654,-2.4,.75,.2);
+  }
+  if(data.id==='ebanisteria'){
+   cube(g,2.5,.18,1.3,0x805331,-2.2,.85,-1.1);
+   for(let i=0;i<4;i++)cube(g,.22,1.1,.22,0x9a714b,1.8+i*.48,.55,-2.1);
+   for(let i=0;i<3;i++)cube(g,1.25,.22,.55,0xb58b61,2.3,.35,.25+i*.65);
+   cube(g,.8,.65,.7,0x58636a,-2.6,.4,-2.15);
+  }
+  if(data.id==='tapiceria'){
+   for(let i=0;i<2;i++){cube(g,1.7,.85,.8,i?0x526b7d:0x9a7185,-2.5,.55,-1.5+i*1.4);cube(g,1.8,.18,.9,0xb9b2a7,-2.5,1.05,-1.5+i*1.4)}
+   for(let i=0;i<4;i++)cube(g,.32,.7,.32,data.products[i%4][2],2.1+i*.52,.45,-2.2);
+   cube(g,1.5,.16,.8,0x9b7654,2.2,.75,.2);
+  }
+  if(data.id==='herreria'){
+   cube(g,2.1,.16,1.1,0x4c5961,-2.3,.8,-1.2);
+   for(let i=0;i<4;i++)cube(g,.16,1.8,.16,0x59636a,1.8+i*.55,.9,-2.2);
+   cube(g,1.4,.12,.9,0x6d777d,2.25,.55,.25);
+   const glow=new T.Mesh(new T.SphereGeometry(.12,8,6),new T.MeshBasicMaterial({color:0xffb347}));glow.position.set(-2.3,1.35,-1.1);g.add(glow);
+  }
+  if(data.id==='aluminio'){
+   for(let i=0;i<4;i++)cube(g,.16,2.1,.16,0x9bb8c5,-3+i*.55,.95,-2.1);
+   for(let i=0;i<2;i++){cube(g,1.5,1.65,.12,0x7d9eaa,2.2,1,-1.7+i*1.1);cube(g,1.25,1.35,.04,0xb9dce8,2.2,1,-1.62+i*1.1)}
+   cube(g,2,.16,.85,0x8b9ca4,-2.2,.75,.15);
+  }
+  if(data.id==='electrodomesticos'){
+   cube(g,1.05,1.7,.8,0x9fb8c0,-2.7,.9,-1.8);
+   cube(g,.9,1.35,.8,0x7c8d96,-1.45,.7,-1.8);
+   cube(g,.85,1.05,.72,0x586b78,2.4,.55,-1.8);
+   cube(g,2,.14,.85,0x8c9ca3,2.1,.8,.1);
+   for(let i=0;i<3;i++)cube(g,.28,.18,.28,0x46515a,-2.7+i*.55,1.85,-1.8);
+  }
+  if(data.id==='celulares'){
+   for(let i=0;i<5;i++){cube(g,.42,.78,.08,0x343a43,-3.1+i*.72,1.1,-2.2);cube(g,.34,.62,.025,data.products[i%4][2],-3.1+i*.72,1.1,-2.13)}
+   cube(g,2.2,.14,.65,0x777f91,2.25,.75,-1.8);
+   for(let i=0;i<4;i++)cube(g,.28,.3,.25,data.products[i%4][2],1.5+i*.48,1.05,-1.8);
+  }
+  if(data.id==='reparacion-celulares'){
+   cube(g,2.2,.16,1.05,0x6b7f88,-2.25,.8,-1.35);
+   for(let i=0;i<3;i++){cube(g,.55,.08,.38,0x252a30,-2.9+i*.7,1,-1.3);cube(g,.38,.04,.24,0x8bb8c2,-2.9+i*.7,1.07,-1.3)}
+   cube(g,.85,.95,.65,0x536a76,2.5,.5,-1.8);
+   for(let i=0;i<3;i++)cube(g,.22,.22,.22,data.products[i+1][2],2.1+i*.4,1.05,-1.8);
+  }
+  if(data.id==='internet'){
+   for(let i=0;i<3;i++){cube(g,1.05,.75,.65,0x4a5663,-2.7+i*2.35,.85,-1.65);cube(g,1,.68,.08,0x8eb4c8,-2.7+i*2.35,1.55,-1.9);cube(g,.72,.06,.42,0x303943,-2.7+i*2.35,.42,-1.35)}
+   cube(g,1.4,1,.7,0x7e8990,2.5,.5,.25);
+  }
+  if(data.id==='imprenta'){
+   for(let i=0;i<3;i++){cube(g,1.05,1.15,.9,0x626c72,-2.7+i*2.25,.65,-1.8);cube(g,.82,.12,.7,0x9aa6aa,-2.7+i*2.25,1.3,-1.8)}
+   cube(g,2.1,.16,1.05,0x9b7654,-2.3,.8,.2);
+   for(let i=0;i<4;i++)cube(g,.38,.55,.3,data.products[i][2],1.8+i*.5,.4,-2.15);
+  }
   // Pequeñas diferencias de fachada: toldos, aleros y marquesinas de barrio.
   if(['fruteria','vivero','floristeria','agropecuaria'].includes(data.id)){cube(g,W+.25,.16,.9,data.trim,0,2.45,front+.38);for(let i=0;i<5;i++)cube(g,1.62,.025,.92,i%2?0xf4e8d2:data.trim,-3.3+i*1.65,2.55,front+.38)}
   if(['hielo','agua','pollera'].includes(data.id)){cube(g,W,.18,.55,0xdcebef,0,2.98,front+.18);cube(g,.18,2.5,.18,data.trim,-W/2+.2,1.35,front+.2);cube(g,.18,2.5,.18,data.trim,W/2-.2,1.35,front+.2)}
