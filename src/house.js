@@ -252,6 +252,7 @@ export function createHouse(T, scene, colliders, world) {
     { id: 'lights', x: 1.2, z: 5.3, label: 'Encender o apagar la luz' },
     { id: 'wardrobe', x: 6.0, z: -3.7, label: 'Cambiar de ropa' },
     { id: 'eat', x: 4.9, z: -5.4, label: 'Comer algo de la nevera' },
+    { id: 'cook', x: -1.2, z: -5.5, label: 'Cocinar comida casera' },
     { id: 'storage', x: -1.5, z: 4.6, label: 'Abrir el inventario' }
   ];
 

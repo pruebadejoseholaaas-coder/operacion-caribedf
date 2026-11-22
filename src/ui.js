@@ -75,6 +75,13 @@ export function createUI(src) {
       msg.textContent = 'Elige un trabajo. Los turnos duran unos dos minutos y se pagan en RD$. La reputación aumenta el pago.';
     }
     phoneBody.appendChild(msg);
+    const mission = src.mission ? src.mission() : null;
+    if (mission) {
+      const m = document.createElement('div');
+      m.className = 'phone-msg';
+      m.innerHTML = '<b>' + mission.title + '</b><br>' + mission.text + (mission.completed ? '' : '<br><small>Recompensa: ' + money(mission.reward) + '</small>');
+      phoneBody.appendChild(m);
+    }
 
     if (shift) {
       const b = document.createElement('button');

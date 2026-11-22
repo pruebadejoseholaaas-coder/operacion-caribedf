@@ -126,6 +126,14 @@ export function createMinimap(world, sources, options = {}) {
       ctx.fillStyle = color;
       ctx.beginPath(); ctx.arc(shift.x, shift.z, 1.6, 0, Math.PI * 2); ctx.fill();
     }
+    const mission = sources.mission ? sources.mission() : null;
+    if (mission) {
+      const color = '#' + (mission.color || 0xffc857).toString(16).padStart(6, '0');
+      ctx.strokeStyle = color; ctx.lineWidth = 1.8;
+      ctx.beginPath(); ctx.arc(mission.x, mission.z, 4.6 + Math.sin(now / 220) * .8, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(mission.x, mission.z, 1.7, 0, Math.PI * 2); ctx.fill();
+    }
     const goal = sources.goal ? sources.goal() : null;
     if (goal) {
       const pulse = 3.4 + Math.sin(now / 260) * 1.1;
@@ -201,6 +209,16 @@ export function createMinimap(world, sources, options = {}) {
       b.fillStyle = color; b.beginPath(); b.arc(x, y, 3, 0, Math.PI * 2); b.fill();
       b.font = 'bold 11px Trebuchet MS'; b.textAlign = 'center';
       b.fillText('Trabajo', x, y + 18);
+    }
+    const mission = sources.mission ? sources.mission() : null;
+    if (mission) {
+      const [x, y] = P(mission.x, mission.z);
+      const color = '#' + (mission.color || 0xffc857).toString(16).padStart(6, '0');
+      b.strokeStyle = color; b.lineWidth = 2.5;
+      b.beginPath(); b.arc(x, y, 7, 0, Math.PI * 2); b.stroke();
+      b.fillStyle = color; b.beginPath(); b.arc(x, y, 3, 0, Math.PI * 2); b.fill();
+      b.font = 'bold 11px Trebuchet MS'; b.textAlign = 'center';
+      b.fillText('Encargo', x, y + 18);
     }
     const goal = sources.goal ? sources.goal() : null;
     if (goal) {

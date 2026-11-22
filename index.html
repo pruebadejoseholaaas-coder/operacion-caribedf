@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiMwZjc2NjAiLz48cGF0aCBkPSJNMTIgNDRWMjBoOGw4IDEyIDgtMTJoOHYyNGgtN1YzMWwtOSAxMy05LTEzdjEzeiIgZmlsbD0iI2Y1ZWFkNSIvPjwvc3ZnPg==">
 </head>
 <body>
-<div class="p" id="t"><b>Operación Caribe</b><small>Zona Colonial, Santo Domingo · prototipo 0.4</small></div>
+<div class="p" id="t"><b>Operación Caribe</b><small>Zona Colonial, Santo Domingo · prototipo 0.5</small></div>
 <div class="p" id="c">Mover: WASD o flechas<br>Correr: Shift<br>Cámara: arrastra el ratón<br>Mapa: M o toca el minimapa<br>Mochila: I · Teléfono: P<br>Motoconcho: E (W/S acelerar, A/D girar, Espacio derrape)<br>Negocios: F para comprar<br>Habilidad: Q<br>Cambiar rol: R</div>
 <div class="p" id="h"></div>
 <div class="p" id="mission">Cargando objetivo...</div>
@@ -18,6 +18,10 @@
 <div id="bigmap" role="dialog" aria-modal="true" aria-label="Mapa de la ciudad"><canvas id="bigmap-canvas"></canvas><button id="bigmap-close" type="button">Cerrar ✕</button></div>
 <div id="inventory-panel" class="sheet" role="dialog" aria-modal="true" aria-labelledby="inv-title"><div class="sheet-card"><button class="sheet-close" id="inv-close" type="button">Cerrar ✕</button><h2 id="inv-title">Mochila</h2><p id="inv-cash"></p><div id="inv-list"></div></div></div>
 <div id="phone" class="sheet" role="dialog" aria-modal="true" aria-labelledby="phone-title"><div class="sheet-card phone-card"><button class="sheet-close" id="phone-close" type="button">Cerrar ✕</button><h2 id="phone-title">Teléfono</h2><div id="phone-body"></div></div></div>
+<div id="mainmenu" role="dialog" aria-modal="true" aria-labelledby="menu-title"><div class="menu-card"><h1 id="menu-title">Operación Caribe</h1><p class="menu-sub">Zona Colonial, Santo Domingo · prototipo 0.5</p><div class="menu-actions"><button id="menu-continue" type="button">Continuar</button><button id="menu-new" type="button">Nueva partida</button><button id="menu-settings" type="button">Ajustes</button><button id="menu-credits" type="button">Créditos</button></div><small>WASD · E interactuar · F comercio · M mapa · I mochila · P teléfono</small></div></div>
+<div id="settings" class="sheet" role="dialog" aria-modal="true" aria-labelledby="settings-title"><div class="sheet-card"><button class="sheet-close" id="settings-close" type="button">Cerrar ✕</button><h2 id="settings-title">Ajustes</h2><label class="set-row"><span>Calidad gráfica</span><select id="set-quality"><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option></select></label><label class="set-row"><span>Sombras</span><input type="checkbox" id="set-shadows"></label><label class="set-row"><span>Volumen</span><input type="range" id="set-volume" min="0" max="100" step="5"></label><label class="set-row"><span>Voces</span><input type="checkbox" id="set-voices"></label><label class="set-row"><span>Mostrar FPS</span><input type="checkbox" id="set-fps"></label><div class="set-actions"><button id="settings-save" type="button">Guardar partida</button><button id="settings-load" type="button">Cargar partida</button><button id="settings-delete" type="button">Borrar partida</button></div></div></div>
+<div id="credits" class="sheet" role="dialog" aria-modal="true" aria-labelledby="credits-title"><div class="sheet-card"><button class="sheet-close" id="credits-close" type="button">Cerrar ✕</button><h2 id="credits-title">Créditos</h2><p>Three.js — MIT — https://threejs.org</p><p>Mapa: datos de OpenStreetMap (ODbL) — https://www.openstreetmap.org/copyright</p><p>Personajes, nombres, comercios y audio generados para Operación Caribe. Sin recursos de terceros con derechos reservados.</p></div></div>
+<div id="fps" aria-live="off"></div>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="fade"></div>
 <div class="p" id="business-hud">Comercios: cargando...</div>
@@ -25,7 +29,7 @@
 <button class="p" id="sound-toggle" type="button">Sonido: activo</button>
 <div class="p" id="ab" style="display:none"></div>
 <div class="p" id="feed" style="display:none"></div>
-<div id="roles"><div class="box"><h1>Elige tu rol</h1><p>Cada rol vive el atraco de una forma distinta.</p><div class="cards"></div></div></div>
+<div id="roles" style="display:none"><div class="box"><h1>Elige tu rol</h1><p>Cada rol vive el atraco de una forma distinta.</p><div class="cards"></div></div></div>
 <div id="stick"><div id="knob"></div></div>
 <button class="b" id="bE" style="bottom:calc(env(safe-area-inset-bottom,0px) + 100px)">Subir</button>
 <button class="b" id="bR" style="bottom:calc(env(safe-area-inset-bottom,0px) + 28px)">Correr</button>

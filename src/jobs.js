@@ -329,6 +329,12 @@ export function createJobSystem(T, scene, opts) {
     } else setMarker(shift.x, shift.z, 0xf4a261);
   }
 
+  function addRep(n) {
+    progress.rep = Math.min(100, progress.rep + Math.max(0, n | 0));
+    save();
+    return progress.rep;
+  }
+
   function missionText() {
     if (shift) {
       if (shift.phase === 'travel') {
@@ -388,7 +394,7 @@ export function createJobSystem(T, scene, opts) {
   }
 
   return {
-    update, interact, hint, missionText, offers, startShift, cancelShift, startDelivery, cancelDelivery, serialize, restore,
+    update, interact, hint, missionText, offers, startShift, cancelShift, startDelivery, cancelDelivery, serialize, restore, addRep,
     shiftSummary, deliverySummary, progress: () => ({ ...progress }),
     setProgress: (done, rep) => { progress.done = Math.max(0, done | 0); progress.rep = Math.max(0, Math.min(100, rep | 0)); },
     deliveryMarker: () => delivery ? { x: delivery.x, z: delivery.z } : null,

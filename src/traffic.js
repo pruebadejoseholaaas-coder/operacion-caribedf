@@ -133,7 +133,7 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
   const glow = c => new T.MeshBasicMaterial({ color: c });
 
   function makeVehicle(model, withRider = false) {
-    const g = new T.Group(), wheels = [];
+    const g = new T.Group(), wheels = [], headlights = [];
     const { kind, length, width, height, color } = model;
     if (kind === 'moto') {
       const frame = new T.Mesh(new T.BoxGeometry(.28, .38, length), material(color)); frame.position.y = .82; g.add(frame);
@@ -142,6 +142,8 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
         const wh = new T.Mesh(new T.CylinderGeometry(.3, .3, .14, 10), material(0x171717));
         wh.rotation.z = Math.PI / 2; wh.position.set(0, .36, z); g.add(wh); wheels.push(wh);
       }
+      const motoLight = new T.Mesh(new T.SphereGeometry(.09, 6, 6), glow(0xfff2c0));
+      motoLight.position.set(0, .82, length * .5); g.add(motoLight); headlights.push(motoLight);
       if (withRider) {
         const rider = new T.Group();
         const body = new T.Mesh(new T.BoxGeometry(.42, .62, .3), material(0x2a9d8f)); body.position.y = 1.25; rider.add(body);
@@ -177,10 +179,12 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
       }
       for (const x of [-width * .32, width * .32]) {
         const lamp = new T.Mesh(new T.BoxGeometry(.2, .12, .06), glow(0xfff2c0));
-        lamp.position.set(x, bodyY + .05, length * .5); g.add(lamp);
+        lamp.position.set(x, bodyY + .05, length * .5); g.add(lamp); headlights.push(lamp);
       }
     }
     g.userData.wheels = wheels;
+    g.userData.headlights = headlights;
+    headlights.forEach(h => { h.visible = false; });
     return g;
   }
 
@@ -302,6 +306,14 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
       heads[axis] = bulbs;
     }
     g.position.set(n.x, 0, n.z); scene.add(g);
+    for (const e of n.edges.slice(0, 4)) {
+      for (let k = -1.5; k <= 1.5; k += .75) {
+        const stripe = new T.Mesh(new T.BoxGeometry(.45, .03, 2.1), material(0xf0eee4));
+        stripe.position.set(e.dx * 4.2 - e.dz * k, .035, e.dz * 4.2 + e.dx * k);
+        stripe.rotation.y = Math.atan2(e.dx, e.dz);
+        g.add(stripe);
+      }
+    }
     lightVisuals.set(n.k, { g, heads });
   }
   function updateLightVisual(n, time) {
@@ -315,7 +327,11 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
     v.g.visible = true;
   }
 
-  let clock = 0;
+  let clock = 0, nightMode = false;
+  function setNight(on) {
+    nightMode = !!on;
+    for (const v of vehicles) v.g.userData.headlights?.forEach(h => { h.visible = nightMode; });
+  }
 
   function respawn(v, px, pz) {
     const e = randomEdgeNear(px, pz, 65, 150);
@@ -521,7 +537,7 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
   }
 
   return {
-    update, collide, vehicles, stops, graph,
+    update, collide, setNight, vehicles, stops, graph,
     stats: () => ({ vehicles: vehicles.length, parked: parked.length, nodes: graph.nodes.size, lights: graph.lights.length, stops: stops.length, passengers: stops.reduce((n, s) => n + s.pax.filter(p => p.state === 'wait').length, 0) })
   };
 }
