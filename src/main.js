@@ -172,6 +172,7 @@ function speakNpc(line){
 }
 const localLines=['¡Dímelo! ¿Todo bien?','Voy al colmado y regreso ahora.','Ese tapón está fuerte hoy.','Buenas, ¿cómo va todo?','Parece que va a llover.','La guagua viene llena otra vez.','Nos vemos ahorita, cuídate.','¿Tú sabes dónde queda la parada?','Qué calor hace hoy, de verdad.','Voy a comprar algo de comer.','Con permiso, voy por aquí.','Hoy la calle está tranquila.','Déjame revisar un mensaje.','¡Qué lo qué! ¿Cómo está la cosa?'];
 function cityTalkTick(dt){
+ npcGreetingCooldown=Math.max(0,npcGreetingCooldown-dt);
  voiceClock-=dt;talkRemaining=Math.max(0,talkRemaining-dt);if(talkRemaining<=0&&talkEl)talkEl.style.display='none';if(voiceClock>0)return;voiceClock=10+Math.random()*9;
  const pp=player.g.position,nearby=npcs.filter(n=>n.g.visible&&n.g.position.distanceTo(pp)<19);if(!nearby.length)return;
  const n=nearby[Math.floor(Math.random()*nearby.length)],hour=worldClock/3600;
@@ -206,8 +207,19 @@ const hl=new T.Mesh(new T.SphereGeometry(.12,8,8),new T.MeshBasicMaterial({color
 // Estado y controles
 let yaw=0,pitch=.38,vx=0,vz=0,rot=0,riding=false,t=0,spd=0,steerS=0,lastDrag=0;
 const keys={};let run=false,jx=0,jy=0;
-addEventListener('keydown',e=>{keys[e.code]=1;if(e.code==='KeyE')toggle();if(e.code==='KeyQ')useAbility();if(e.code==='KeyR')$('roles').style.display='flex';if(e.code==='KeyF')businessSystem?.interact(player.g.position)});
+addEventListener('keydown',e=>{keys[e.code]=1;if(e.code==='KeyE')toggle();if(e.code==='KeyQ')useAbility();if(e.code==='KeyR')$('roles').style.display='flex';if(e.code==='KeyF')businessSystem?.interact(player.g.position);if(e.code==='KeyT'&&npcGreetingCooldown<=0){greetNearbyNpc();npcGreetingCooldown=1.2}});
+
 addEventListener('keyup',e=>keys[e.code]=0);
+let npcGreetingCooldown=0;
+function greetNearbyNpc(){
+ const pp=player.g.position,nearby=npcs.filter(n=>n.g.visible&&n.g.position.distanceTo(pp)<4.5).sort((a,b)=>a.g.position.distanceTo(pp)-b.g.position.distanceTo(pp));
+ if(!nearby.length){if(talkEl){talkEl.textContent='No hay nadie suficientemente cerca para saludar.';talkEl.style.display='block';talkRemaining=2.2}return}
+ const n=nearby[0],hour=worldClock/3600,first=n.trust<1,answers={amable:['¡Buenas! ¿Cómo tú estás?','¡Qué bueno verte por aquí!'],reservado:['Buenas. Todo tranquilo.','Hola, ¿todo bien?'],alegre:['¡Eeeh, qué lo qué!','¡Activo! Que tengas buen día.'],tranquilo:['Hola, espero que todo marche bien.','Buenas, aquí estamos.']};
+ n.trust=Math.min(5,(n.trust||0)+1);n.mood=n.trust>=3?'familiar':'amigable';n.g.rotation.y=Math.atan2(pp.x-n.g.position.x,pp.z-n.g.position.z);
+ const options=hour<6?['A esta hora casi todo está tranquilo.','La ciudad todavía está despertando.']:hour>=18?['Ya va cayendo la noche.','Que tengas buena noche.']:answers[n.personality]||answers.tranquilo;
+ const line=first?options[Math.floor(Math.random()*options.length)]:n.trust>=3?'¡Ya nos conocemos! ¿Cómo va todo?':options[Math.floor(Math.random()*options.length)];
+ if(talkEl){talkEl.textContent=n.name+' ('+n.occupation+'): «'+line+'» · Confianza '+n.trust+'/5';talkEl.style.display='block';talkRemaining=4.5} speakNpc(line);
+}
 let drag=null;const cvs=renderer.domElement;
 cvs.addEventListener('pointerdown',e=>{drag={id:e.pointerId,x:e.clientX,y:e.clientY}});
 addEventListener('pointermove',e=>{if(drag&&e.pointerId===drag.id){lastDrag=performance.now();yaw-=(e.clientX-drag.x)*.006;pitch=Math.min(1.2,Math.max(.08,pitch+(e.clientY-drag.y)*.005));drag.x=e.clientX;drag.y=e.clientY}});
