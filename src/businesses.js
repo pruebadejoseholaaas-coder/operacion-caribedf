@@ -196,8 +196,7 @@ export function createBusinessSystem(T, scene, colliders) {
     // Cajas de refrescos y mercancía apilada junto a la entrada.
     for(let row=0;row<2;row++)for(let k=0;k<3;k++)
      cube(g,.48,.42,.42,[0x286b9b,0xc83e35,0x2d8b57][k],-3.25+k*.52,.25+row*.43,1.72);
-    // Bombillas y bandera dominicana sobre la entrada.
-    const flag=new T.Mesh(new T.PlaneGeometry(.72,.42),new T.MeshBasicMaterial({color:0xf4f0e5}));
+    // Bombillas y bandera dominicana sobre la entrada.    const flag=new T.Mesh(new T.PlaneGeometry(.72,.42),new T.MeshBasicMaterial({color:0xf4f0e5}));
     flag.position.set(-.05,2.48,front+.13);g.add(flag);
     cube(g,.12,.12,.035,0x244b9a,-.2,2.48,front+.16);
     cube(g,.12,.12,.035,0xc83b42,.08,2.48,front+.16);
@@ -337,6 +336,68 @@ export function createBusinessSystem(T, scene, colliders) {
     for(const xx of [-.22,.22])for(const zz of [-.22,.22])cube(g,.06,.42,.06,0x34383a,sx+xx,.22,sz+zz);
    }
   }
+  if(data.id==='empanadas'){
+   // Empanadería de barrio: horno, mesa de masa y vitrina de productos recién hechos.
+   cube(g,5.2,.14,1.45,0xd9a15c,0,2.72,front+.58);
+   for(const px of [-2.42,2.42]){
+    cube(g,.12,2.55,.12,0x76513a,px,1.28,front+.55);
+    cube(g,.16,.12,.16,0x9a7048,px,2.55,front+.55);
+   }
+   // Horno compacto de acero con puerta y controles frontales.
+   cube(g,1.72,1.55,1.05,0x777f82,2.45,.88,-2.05);
+   cube(g,1.48,.92,.055,0x343a3d,2.45,.88,-1.505);
+   cube(g,1.22,.68,.035,0x9ca5a8,2.45,.9,-1.46);
+   for(let i=0;i<3;i++){
+    const knob=new T.Mesh(new T.SphereGeometry(.065,8,6),material(0x25292a));
+    knob.position.set(2.05+i*.36,1.62,-1.45);g.add(knob);
+   }
+   // Bandejas metálicas y empanadas doradas sobre el área de exhibición.
+   cube(g,1.92,.1,.78,0xb9c0c2,-2.35,.98,-1.65);
+   for(let row=0;row<2;row++)for(let i=0;i<4;i++){
+    const pastry=new T.Mesh(new T.SphereGeometry(.2,10,7),material([0xdca34c,0xc88742,0xe5b85c,0xb8793e][i]));
+    pastry.scale.set(1.25,.48,.72);
+    pastry.position.set(-3.05+i*.46,1.13+row*.27,-1.82+row*.34);g.add(pastry);
+   }
+   // Mesa de preparación con masa, rodillo y recipientes.
+   cube(g,2.25,.82,.88,0x8b6348,.05,.52,-2.2);
+   cube(g,2.3,.1,.92,0xe6dfcf,.05,.98,-2.2);
+   cube(g,.95,.035,.62,0xd8c9a9,-.28,1.06,-2.2);
+   const dough=new T.Mesh(new T.CylinderGeometry(.24,.24,.12,16),material(0xe8d6ad));
+   dough.rotation.x=Math.PI/2;dough.position.set(-.28,1.18,-2.2);g.add(dough);
+   const roller=new T.Mesh(new T.CylinderGeometry(.055,.055,.58,10),material(0x9c754f));
+   roller.rotation.z=Math.PI/2;roller.position.set(.55,1.14,-2.2);g.add(roller);
+   for(let i=0;i<2;i++){
+    const bowl=new T.Mesh(new T.CylinderGeometry(.18,.14,.16,12),material(i?0x9da6a8:0xc1c7c8));
+    bowl.position.set(.72+i*.48,1.13,-2.2);g.add(bowl);
+   }
+   // Vitrina frontal con paneles transparentes y estantes.
+   cube(g,1.95,.72,.62,0x76513a,2.35,.55,.05);
+   cube(g,1.98,.07,.68,0xb9c0c2,2.35,.95,.05);
+   for(const px of [1.38,3.32]){
+    cube(g,.045,.72,.045,0x9ccbd0,px,1.34,.05);
+   }
+   for(const zz of [-.25,.35]){
+    cube(g,1.9,.045,.045,0x9ccbd0,2.35,1.34,zz);
+   }
+   for(let i=0;i<4;i++){
+    const display=new T.Mesh(new T.SphereGeometry(.17,10,7),material(data.products[i][2]));
+    display.scale.set(1.25,.55,.8);
+    display.position.set(1.62+i*.48,1.13,.05);g.add(display);
+   }
+   // Cartel de especialidades y lámparas sobre el mostrador.
+   cube(g,1.8,.95,.08,0x8b342b,-2.45,2.05,front+.035);
+   for(let i=0;i<4;i++)cube(g,1.35,.055,.035,i%2?0xf0d9aa:0xf4eee1,-2.45,2.35-i*.2,front+.085);
+   for(let i=0;i<3;i++){
+    cube(g,.035,.32,.035,0x34383a,-1.7+i*1.7,2.48,front+.38);
+    const bulb=new T.Mesh(new T.SphereGeometry(.11,8,6),lampMaterial);
+    bulb.position.set(-1.7+i*1.7,2.27,front+.38);g.add(bulb);
+   }
+   // Cajas de empaques y servilletas junto al área de entrega.
+   for(let i=0;i<3;i++){
+    cube(g,.42,.24,.42,0xd7c6a3,-3.05+i*.48,.18,front+.85);
+    cube(g,.32,.045,.32,0xf0eee7,-3.05+i*.48,.32,front+.85);
+   }
+  }
   if(data.id==='jugos'){for(let i=0;i<2;i++){const m=new T.Mesh(new T.CylinderGeometry(.13,.16,.38,10),material(0x7eb8c7));m.position.set(2.4,.55,-1+i*.65);g.add(m)}}
   if(data.id==='panaderia'||data.id==='reposteria'){cube(g,1.25,1.35,.9,0x51433a,2.55,.8,-1.55);cube(g,.9,.7,.08,0xe4b66d,2.55,.85,-1.05);for(let i=0;i<3;i++)cube(g,.9,.1,.5,0xb18a5b,-2.7,.5+i*.42,-1.2)}
   if(data.id==='carniceria'||data.id==='pescaderia'){cube(g,1.65,.9,.9,0x9bbbc1,2.5,.55,-1.4);cube(g,1.7,.12,.94,0xeaf4f4,2.5,1.03,-1.4);for(let i=0;i<3;i++){const m=new T.Mesh(new T.SphereGeometry(.2,8,6),material(data.products[i][2]));m.position.set(2.15+i*.35,1.13,-1.4);g.add(m)}}
@@ -396,8 +457,7 @@ export function createBusinessSystem(T, scene, colliders) {
   }
   if(data.id==='internet'){
    for(let i=0;i<3;i++){cube(g,1.05,.75,.65,0x4a5663,-2.7+i*2.35,.85,-1.65);cube(g,1,.68,.08,0x8eb4c8,-2.7+i*2.35,1.55,-1.9);cube(g,.72,.06,.42,0x303943,-2.7+i*2.35,.42,-1.35)}
-   cube(g,1.4,1,.7,0x7e8990,2.5,.5,.25);
-  }
+   cube(g,1.4,1,.7,0x7e8990,2.5,.5,.25);  }
   if(data.id==='imprenta'){
    for(let i=0;i<3;i++){cube(g,1.05,1.15,.9,0x626c72,-2.7+i*2.25,.65,-1.8);cube(g,.82,.12,.7,0x9aa6aa,-2.7+i*2.25,1.3,-1.8)}
    cube(g,2.1,.16,1.05,0x9b7654,-2.3,.8,.2);
