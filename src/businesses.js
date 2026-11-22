@@ -122,7 +122,7 @@ export function createBusinessSystem(T, scene, colliders) {
    const walk=(s.clientPhase+=dt*.12)%1;s.customer.g.position.x=Math.sin(walk*Math.PI*2)*.8;s.customer.g.position.z=2.35-Math.sin(walk*Math.PI)*.8;s.customer.a.rotation.x=Math.sin(s.phase*2)*.3;s.customer.b.rotation.x=-s.customer.a.rotation.x;
    s.g.visible=distance<260;
   }
-  if(hud){hud.textContent='Comercios: '+shops.filter(s=>s.open).length+'/10 abiertos · '+money(economy.cash)+(nearbyShop?' · F: '+nearbyShop.data.kind:'')}
+  if(hud){hud.textContent='Comercios: '+shops.filter(s=>s.open).length+'/20 abiertos · '+money(economy.cash)+(nearbyShop?' · F: '+nearbyShop.data.kind:'')}
   if(active&&info){info.textContent=(active.open?'Abierto':'Cerrado')+' · '+active.data.detail+' · Empleado: '+active.data.task+' · Ventas simuladas: '+active.sales+' · '+money(economy.cash);if(!active.open)products.querySelectorAll('button').forEach(b=>b.disabled=true)}
  }
  return{update,interact,close:closePanel,shops};
