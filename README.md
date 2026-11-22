@@ -2,7 +2,7 @@
 
 Juego 3D de mundo abierto, inspirado en los grandes atracos, ambientado en la República Dominicana. Se juega en el navegador y más adelante como APK de Android.
 
-> **Estado:** prototipo 0.3. Zona Colonial de Santo Domingo con calles reales (OpenStreetMap), 40 comercios, habitantes con rutinas, tráfico con semáforos, minimapa, clima dinámico, casa propia, teléfono, inventario y encargos de entrega.
+> **Estado:** prototipo 0.4. Zona Colonial de Santo Domingo con calles reales (OpenStreetMap), 40 comercios explorables con clientes, habitantes con rutinas, tráfico con semáforos y pasajeros, minimapa, clima dinámico, casa propia, teléfono, inventario, encargos de entrega, trabajos por turnos y reputación.
 >
 > El estado detallado y verificado de cada fase está en [`OPERACION_CARIBE_PROGRESS.md`](OPERACION_CARIBE_PROGRESS.md).
 
@@ -29,7 +29,9 @@ Abre la dirección que muestre la terminal. Desde el celular, en la misma red Wi
 - [x] Ciudad real (OpenStreetMap), 40 comercios, tráfico con semáforos y minimapa
 - [x] Casa del jugador con interior, teléfono, inventario y encargos de entrega
 - [x] Transporte público con pasajeros que esperan, suben y bajan
-- [ ] Trabajos con turnos y misiones encadenadas
+- [x] Trabajos por turnos (colmado, reparto, taller) con reputación
+- [x] Interiores de comercios con clientes que entran, compran y salen
+- [ ] Misiones encadenadas e historias de personajes
 - [ ] Audio ambiental y pruebas en Android
 - [ ] Fase 2: sistema de roles (Programador, Planificador, Conductor...)
 - [ ] Fase 3: primer asalto con motor de tramas y giros aleatorios
