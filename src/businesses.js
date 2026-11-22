@@ -29,7 +29,18 @@ const CATALOG = [
  {id:'celulares',name:'Móvil Express',kind:'TIENDA DE CELULARES',open:9,close:20,wall:0xc7c9dc,trim:0x535d9b,task:'muestra teléfonos y accesorios',products:[['Teléfono básico',4200,0x444b56],['Funda',350,0xd46e91],['Cargador',550,0xe0e0e0],['Audífonos',650,0x343a43]],detail:'Vitrinas iluminadas, teléfonos de muestra, fundas, cargadores y audífonos'},
  {id:'reparacion-celulares',name:'Tecno Soluciones RD',kind:'REPARACIÓN DE CELULARES',open:9,close:19,wall:0xcbd6dc,trim:0x267d8a,task:'diagnostica y prueba celulares',products:[['Diagnóstico móvil',250,0x8bb8c2],['Cambio de pantalla',1850,0x5e7580],['Cambio de batería',950,0x9cb2a0],['Limpieza de puerto',400,0x657b86]],detail:'Mesas de precisión, teléfonos en revisión, repuestos y vitrinas'},
  {id:'internet',name:'Centro Digital Conecta',kind:'INTERNET Y COPIADO',open:8,close:21,wall:0xd1d7e2,trim:0x3c6795,task:'imprime y escanea documentos',products:[['Una impresión',10,0xf2f2ee],['Fotocopia',5,0xe6e1d7],['Escaneo',25,0x9bb6c8],['Una hora de internet',40,0x4c789d]],detail:'Computadoras, impresoras, fotocopiadora, escáner y escritorios'},
- {id:'imprenta',name:'Imprenta La Nacional',kind:'IMPRENTA',open:8,close:18,wall:0xd9c9b7,trim:0x9a563d,task:'prepara e imprime pedidos',products:[['Tarjetas de presentación',650,0xe5d7c3],['Volantes',950,0xf0e6d5],['Afiches',450,0xc86a50],['Invitaciones',1200,0xd6a5a0]],detail:'Impresoras, resmas de papel, tintas, mesa de corte y pedidos empacados'}
+ {id:'imprenta',name:'Imprenta La Nacional',kind:'IMPRENTA',open:8,close:18,wall:0xd9c9b7,trim:0x9a563d,task:'prepara e imprime pedidos',products:[['Tarjetas de presentación',650,0xe5d7c3],['Volantes',950,0xf0e6d5],['Afiches',450,0xc86a50],['Invitaciones',1200,0xd6a5a0]],detail:'Impresoras, resmas de papel, tintas, mesa de corte y pedidos empacados'},
+
+ {id:'fotografia',name:'Estudio Fotográfico Luz Caribe',kind:'ESTUDIO FOTOGRÁFICO',open:9,close:19,wall:0xd9d5d0,trim:0x5a6578,task:'prepara sesiones y revisa fotografías',products:[['Foto tamaño carnet',150,0xd7dce0],['Foto impresa 8x10',250,0xc7d3df],['Sesión individual',1200,0x9b8b78],['Retrato familiar',2200,0xb99b83]],detail:'Fondo fotográfico, focos, trípodes, cámaras, computadora y mostrador de impresiones'},
+ {id:'serigrafia',name:'Serigrafía Tinta Criolla',kind:'SERIGRAFÍA',open:8,close:18,wall:0xe0d4c4,trim:0x2a6d70,task:'estampa diseños en prendas',products:[['Estampado sencillo',180,0xeeeeee],['Camiseta personalizada',550,0xc8372d],['Gorra estampada',420,0x34495e],['Pedido de 12 camisetas',4800,0xe7b84b]],detail:'Pulpo de serigrafía, marcos de malla, tintas, raseros, camisetas y mesa de secado'},
+ {id:'barberia',name:'Barbería El Corte Fino',kind:'BARBERÍA',open:9,close:21,wall:0xc8cbd0,trim:0x243b55,task:'corta y arregla el cabello',products:[['Corte clásico',250,0x293747],['Corte y barba',400,0x5b4035],['Afeitado',180,0xc6a27e],['Diseño de líneas',350,0x8b6a50]],detail:'Sillas de barbero, espejos grandes, máquinas, navajas, capas y área de espera'},
+ {id:'salon-belleza',name:'Salón de Belleza Glamour RD',kind:'SALÓN DE BELLEZA',open:8,close:20,wall:0xe8cbd4,trim:0xa34f78,task:'peina y atiende a sus clientas',products:[['Lavado y secado',450,0x9d6c88],['Peinado',650,0xc88ca7],['Tratamiento capilar',850,0x805c48],['Tinte',1450,0x6d4254]],detail:'Espejos con luces, sillones de peluquería, lavacabezas, secadores y exhibidor de productos'},
+ {id:'unas',name:'Nails Studio Manos Bonitas',kind:'CENTRO DE UÑAS',open:9,close:19,wall:0xf0d7df,trim:0xb45e85,task:'limpia y decora uñas',products:[['Manicura',350,0xe6b9c8],['Pedicura',500,0xd69bad],['Uñas acrílicas',950,0xb77b9a],['Diseño decorativo',250,0xe9c5a6]],detail:'Mesas de manicura, lámparas UV, sillones de pedicura, esmaltes y muestrarios de diseños'},
+ {id:'bordado',name:'Bordados Yanelis',kind:'TALLER DE BORDADO',open:8,close:18,wall:0xd8d2c6,trim:0x536d83,task:'borda nombres y logotipos',products:[['Nombre bordado',180,0x536d83],['Logo pequeño',350,0xc8372d],['Gorra bordada',480,0x9b7654],['Uniforme personalizado',950,0x2a6d70]],detail:'Máquinas de bordado, bastidores, hilos de colores, prendas y computadora con diseños'},
+ {id:'ferreteria',name:'Ferretería El Constructor',kind:'FERRETERÍA',open:7,close:19,wall:0xd8c8a8,trim:0x4e7045,task:'despacha herramientas y materiales',products:[['Martillo',350,0x6e7478],['Destornillador',180,0x9b7654],['Pintura galón',1250,0xc86a50],['Cemento',520,0x96938d]],detail:'Estanterías de herramientas, sacos de cemento, pinturas, tubos, tornillos y mostrador de despacho'},
+ {id:'repuestos-motos',name:'Repuestos Motores del Cibao',kind:'REPUESTOS DE MOTOCICLETAS',open:8,close:19,wall:0xcbd1d4,trim:0x315b72,task:'busca y entrega piezas de motocicleta',products:[['Bujía',180,0xb4bec2],['Cadena',650,0x59636a],['Pastillas de freno',420,0x8a969b],['Casco',1450,0xd34b3f]],detail:'Vitrinas de piezas, neumáticos, cascos, cadenas, lubricantes y mostrador de repuestos'},
+ {id:'taller-motos',name:'Taller de Motos El Pistón',kind:'TALLER DE MOTOCICLETAS',open:7,close:18,wall:0xbfc5c4,trim:0x53636b,task:'revisa y repara motocicletas',products:[['Cambio de aceite',450,0x98754b],['Ajuste de frenos',350,0x697780],['Reparación de goma',250,0x33383d],['Mantenimiento general',950,0x87969b]],detail:'Motocicletas en reparación, elevadores, herramientas, compresor y estantes de lubricantes'},
+ {id:'taller-autos',name:'Auto Servicio La 27',kind:'TALLER MECÁNICO AUTOMOTRIZ',open:7,close:18,wall:0xc3c9cc,trim:0x3d596b,task:'diagnostica y repara vehículos',products:[['Diagnóstico básico',650,0x6d8794],['Cambio de aceite',1450,0x9b7654],['Revisión de frenos',1100,0x59636a],['Alineación',1250,0x8da0a8]],detail:'Bahía para vehículos, gato hidráulico, elevador, herramientas, compresor y mostrador de piezas'}
 ];
 
 const SITES = [
@@ -62,7 +73,18 @@ const SITES = [
  [4.8,-142.5,.18,.98,1],
  [154.6,-112.2,.97,.22,-1],
  [-190.4,-92.7,.24,-.97,1],
- [12.6,214.3,.99,.05,-1]
+ [12.6,214.3,.99,.05,-1],
+
+ [-215.9,245.1,-8.2,-34.7,-1],
+ [241.6,190.8,-5.1,-34.2,1],
+ [-161,257.5,80.5,-22.4,1],
+ [197,233.6,83.7,-32.9,1],
+ [-225.8,201.3,-11.7,-52.7,-1],
+ [237.1,161.1,-3.8,-25.3,1],
+ [-241.6,135.2,-17.7,-69.7,-1],
+ [136.3,257.6,37.7,-15.2,1],
+ [254.5,-229.2,-12.2,24.1,-1],
+ [52.6,-34.1,94.1,-13.9,-1]
 ];
 
 export function createBusinessSystem(T, scene, colliders) {
@@ -173,6 +195,57 @@ export function createBusinessSystem(T, scene, colliders) {
    cube(g,2.1,.16,1.05,0x9b7654,-2.3,.8,.2);
    for(let i=0;i<4;i++)cube(g,.38,.55,.3,data.products[i][2],1.8+i*.5,.4,-2.15);
   }
+  // Equipamiento específico de los negocios 31 al 40.
+  if(data.id==='fotografia'){
+   cube(g,1.5,2.1,.12,0x394653,-2.5,1.1,-2.1);cube(g,1.25,1.55,.05,0xd9d5d0,-2.5,1.1,-2.02);
+   cube(g,.42,.85,.42,0x303941,.8,.45,-1.7);cube(g,.55,.12,.55,0x59636a,.8,1.05,-1.7);
+   for(let i=0;i<2;i++)cube(g,.12,1.9,.12,0x687783,2.2+i*.65,.95,-2.1);
+   cube(g,1.7,.14,.8,0x8b765f,-2.2,.75,.2);
+  }
+  if(data.id==='serigrafia'){
+   cube(g,2.2,.16,1.2,0x805b3d,-2.3,.8,-1.4);
+   for(let i=0;i<3;i++){cube(g,.12,1.35,.12,0x536d83,1.8+i*.55,.7,-2.1);cube(g,.65,.08,.08,0xb5c1c6,2.05+i*.55,1.35,-2.1)}
+   cube(g,1.1,.18,.9,0x4b626c,2.35,.7,.15);
+   for(let i=0;i<3;i++)cube(g,.45,.65,.08,data.products[i+1][2],-3+i*.65,.45,-2.2);
+  }
+  if(data.id==='barberia'){
+   for(let i=0;i<2;i++){const px=-2.5+i*4.8;cube(g,.95,1.05,.85,0x293747,px,.65,-1.5);cube(g,.95,.16,.95,0x5b4035,px,1.25,-1.5);cube(g,.12,1.7,.08,0x9ca8ad,px,1.35,-2.05);cube(g,1.15,1.65,.06,0x6f8d9b,px,1.45,-2.0)}
+   cube(g,1.8,.12,.7,0x805b3d,0,.65,.25);
+   for(let i=0;i<3;i++)cube(g,.2,.45,.2,data.products[i][2],-.5+i*.5,.95,.25);
+  }
+  if(data.id==='salon-belleza'){
+   for(let i=0;i<3;i++){cube(g,1.05,1.65,.08,0x9aa9ad,-3+i*2.3,1.15,-2.25);cube(g,.95,.08,.08,0xd9e3e4,-3+i*2.3,2,-2.2);cube(g,.65,.75,.65,0x9b6c88,-3+i*2.3,.45,-1.1)}
+   cube(g,1.1,.9,.85,0x6b8792,2.5,.5,.2);
+  }
+  if(data.id==='unas'){
+   for(let i=0;i<2;i++){cube(g,1.6,.14,.85,0xf0e6e1,-2.2+i*4.2,.8,-1.35);cube(g,.55,.55,.55,0xd69bad,-2.2+i*4.2,.35,-1.35);cube(g,.35,.18,.35,0xf5e7ef,-2.2+i*4.2,1,-1.35)}
+   for(let i=0;i<5;i++)cube(g,.16,.25,.16,data.products[i%4][2],-3+i*.48,1.05,-2.1);
+  }
+  if(data.id==='bordado'){
+   for(let i=0;i<2;i++){cube(g,1.2,.95,.8,0x536d83,-2.3+i*4.5,.55,-1.5);cube(g,.85,.16,.65,0x9baeb8,-2.3+i*4.5,1.12,-1.5);const hoop=new T.Mesh(new T.TorusGeometry(.32,.045,6,16),material(0xb58b61));hoop.position.set(-2.3+i*4.5,1.3,-1.02);g.add(hoop)}
+   for(let i=0;i<5;i++)cube(g,.18,.55,.18,data.products[i%4][2],-3+i*.48,.4,-2.25);
+  }
+  if(data.id==='ferreteria'){
+   for(let row=0;row<3;row++){cube(g,2.2,.12,.55,0x76543b,-2.6,.55+row*.72,-2.1);for(let i=0;i<5;i++)cube(g,.28,.38,.28,data.products[(i+row)%4][2],-3.35+i*.38,.8+row*.72,-2.1)}
+   for(let i=0;i<3;i++)cube(g,.55,.85,.55,0x96938d,2.4,.45,-1.9+i*.75);
+  }
+  if(data.id==='repuestos-motos'){
+   for(let row=0;row<3;row++){cube(g,2.2,.12,.55,0x59636a,-2.55,.55+row*.72,-2.15);for(let i=0;i<4;i++)cube(g,.34,.34,.3,data.products[(i+row)%4][2],-3.2+i*.42,.8+row*.72,-2.15)}
+   for(let i=0;i<2;i++){const tire=new T.Mesh(new T.TorusGeometry(.42,.13,7,16),material(0x25292d));tire.position.set(2.35,.55,-1.55+i*1.05);g.add(tire)}
+  }
+  if(data.id==='taller-motos'){
+   cube(g,1.25,.22,2.2,0x53636b,-2.3,.55,-1.5);
+   const wheel=new T.Mesh(new T.TorusGeometry(.38,.13,7,16),material(0x25292d));wheel.position.set(-2.3,.9,-1.5);g.add(wheel);
+   cube(g,.9,.8,.65,0x59636a,2.4,.45,-1.8);
+   for(let i=0;i<3;i++)cube(g,.18,.75,.18,0x8b969b,1.8+i*.45,.4,-2.2);
+  }
+  if(data.id==='taller-autos'){
+   cube(g,3.3,.18,4.2,0x53636b,-2.1,.18,-1.3);
+   cube(g,1.8,.72,3.4,0x315b72,-2.1,.8,-1.3);
+   cube(g,1.55,.62,1.55,0x8bb5c9,-2.1,1.45,-1.3);
+   for(const px of [-3.05,-1.15])for(const pz of [-2.45,-.15]){const tire=new T.Mesh(new T.TorusGeometry(.3,.12,7,14),material(0x24282b));tire.rotation.y=Math.PI/2;tire.position.set(px,.42,pz);g.add(tire)}
+   for(let i=0;i<3;i++)cube(g,.22,.8,.22,0x6d777d,2+i*.42,.4,-2.1);
+  }
   // Pequeñas diferencias de fachada: toldos, aleros y marquesinas de barrio.
   if(['fruteria','vivero','floristeria','agropecuaria'].includes(data.id)){cube(g,W+.25,.16,.9,data.trim,0,2.45,front+.38);for(let i=0;i<5;i++)cube(g,1.62,.025,.92,i%2?0xf4e8d2:data.trim,-3.3+i*1.65,2.55,front+.38)}
   if(['hielo','agua','pollera'].includes(data.id)){cube(g,W,.18,.55,0xdcebef,0,2.98,front+.18);cube(g,.18,2.5,.18,data.trim,-W/2+.2,1.35,front+.2);cube(g,.18,2.5,.18,data.trim,W/2-.2,1.35,front+.2)}
@@ -197,7 +270,7 @@ export function createBusinessSystem(T, scene, colliders) {
    const walk=(s.clientPhase+=dt*.12)%1;s.customer.g.position.x=Math.sin(walk*Math.PI*2)*.8;s.customer.g.position.z=2.35-Math.sin(walk*Math.PI)*.8;s.customer.a.rotation.x=Math.sin(s.phase*2)*.3;s.customer.b.rotation.x=-s.customer.a.rotation.x;
    s.g.visible=distance<260;
   }
-  if(hud){hud.textContent='Comercios: '+shops.filter(s=>s.open).length+'/20 abiertos · '+money(economy.cash)+(nearbyShop?' · F: '+nearbyShop.data.kind:'')}
+  if(hud){hud.textContent='Comercios: '+shops.filter(s=>s.open).length+'/'+shops.length+' abiertos · '+money(economy.cash)+(nearbyShop?' · F: '+nearbyShop.data.kind:'')}
   if(active&&info){info.textContent=(active.open?'Abierto':'Cerrado')+' · '+active.data.detail+' · Empleado: '+active.data.task+' · Ventas simuladas: '+active.sales+' · '+money(economy.cash);if(!active.open)products.querySelectorAll('button').forEach(b=>b.disabled=true)}
  }
  return{update,interact,close:closePanel,shops};
