@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import './style.css';
 import { loadWorld } from './world.js';
+import { createBusinessSystem } from './businesses.js';
 
 const T=THREE,$=id=>document.getElementById(id);
 const renderer=new T.WebGLRenderer({antialias:true});
@@ -53,6 +54,7 @@ function updateEnvironment(dt,px,pz){
 const mats={},mat=c=>mats[c]||(mats[c]=new T.MeshLambertMaterial({color:c}));
 function box(w,h,l,c,x,y,z,sh=true,par=scene){const m=new T.Mesh(new T.BoxGeometry(w,h,l),mat(c));m.position.set(x,y,z);m.castShadow=sh;m.receiveShadow=true;par.add(m);return m}
 const colliders=[];
+let businessSystem=null;
 const col=(x0,x1,z0,z1)=>colliders.push({x0,x1,z0,z1});
 
 const legacyStart=scene.children.length;
@@ -200,7 +202,7 @@ const hl=new T.Mesh(new T.SphereGeometry(.12,8,8),new T.MeshBasicMaterial({color
 // Estado y controles
 let yaw=0,pitch=.38,vx=0,vz=0,rot=0,riding=false,t=0,spd=0,steerS=0,lastDrag=0;
 const keys={};let run=false,jx=0,jy=0;
-addEventListener('keydown',e=>{keys[e.code]=1;if(e.code==='KeyE')toggle();if(e.code==='KeyQ')useAbility();if(e.code==='KeyR')$('roles').style.display='flex'});
+addEventListener('keydown',e=>{keys[e.code]=1;if(e.code==='KeyE')toggle();if(e.code==='KeyQ')useAbility();if(e.code==='KeyR')$('roles').style.display='flex';if(e.code==='KeyF')businessSystem?.interact(player.g.position)});
 addEventListener('keyup',e=>keys[e.code]=0);
 let drag=null;const cvs=renderer.domElement;
 cvs.addEventListener('pointerdown',e=>{drag={id:e.pointerId,x:e.clientX,y:e.clientY}});
@@ -214,6 +216,7 @@ stick.addEventListener('pointermove',e=>{if(e.pointerId===sid)sv(e)});
 const end=e=>{if(e.pointerId===sid){sid=null;jx=jy=0;knob.style.left=knob.style.top='40px'}};
 stick.addEventListener('pointerup',end);stick.addEventListener('pointercancel',end);
 $('bE').addEventListener('click',toggle);
+$('bF').addEventListener('click',()=>businessSystem?.interact(player.g.position));
 $('bR').addEventListener('click',()=>{run=!run;$('bR').style.opacity=run?1:.7});
 const near=()=>Math.hypot(player.g.position.x-moto.position.x,player.g.position.z-moto.position.z)<3;
 function toggle(){const p=player.g.position;
@@ -289,6 +292,7 @@ loadWorld(T,scene,colliders).then(w=>{if(!w)return;world=w;
  ground.material.map=null;ground.material.color.set(0x8f8a7e);ground.material.needsUpdate=true;
  colliders.length=0;lim.x=w.lim.x;lim.z=w.lim.z;
  activateCityLife(w.roads||[]);
+ businessSystem=createBusinessSystem(T,scene,colliders);
  player.g.position.set(w.spawn[0],0,w.spawn[1]);moto.position.set(w.spawn[0]+2,0,w.spawn[1]);
  GOAL.set(w.goal[0],0,w.goal[1]);beam.position.set(w.goal[0],40,w.goal[1]);
  w.update(w.spawn[0],w.spawn[1]);
@@ -342,6 +346,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
  npcs.forEach(n=>{if(!n.route)return;const fr=abT>0&&role&&role.id==='inf'&&n.g.position.distanceTo(player.g.position)<25;n.pause=Math.max(0,n.pause-dt);if(!fr&&n.pause<=0){n.progress+=n.dir*n.sp*dt/Math.max(1,Math.hypot(n.route.b.x-n.route.a.x,n.route.b.z-n.route.a.z));if(n.progress>1){n.progress=1;n.dir=-1;n.pause=1+Math.random()*2}else if(n.progress<0){n.progress=0;n.dir=1;n.pause=1+Math.random()*2}if(Math.random()<.0015){n.pause=2+Math.random()*3;n.activity=Math.random()<.5?'phone':'rest'}}const r=n.route;n.g.position.x=r.a.x+(r.b.x-r.a.x)*n.progress;n.g.position.z=r.a.z+(r.b.z-r.a.z)*n.progress;n.g.rotation.y=Math.atan2((r.b.x-r.a.x)*n.dir,(r.b.z-r.a.z)*n.dir);const idle=n.pause>0;swing(n,idle?(n.activity==='phone'?.65:0):Math.sin((t+n.t)*8)*.42);if(idle&&n.activity==='phone')n.armR.rotation.x=-1.35});
  traffic.forEach(v=>{v.progress=(v.progress+v.speed*dt/v.s.len)%1;const s=v.s,dx=(s.bx-s.ax)/s.len,dz=(s.bz-s.az)/s.len,nx=-dz,nz=dx;v.g.position.set(s.ax+(s.bx-s.ax)*v.progress+nx*v.lane,0,s.az+(s.bz-s.az)*v.progress+nz*v.lane);v.g.rotation.y=Math.atan2(dx,dz);v.g.userData.wheels?.forEach(w=>w.rotation.x+=v.speed*dt*1.7)});
  cityTalkTick(dt);
+ businessSystem?.update(dt,player.g.position,worldClock);
  if(role&&performance.now()-lastDrag>1200&&(riding?Math.abs(spd)>1:(sp>.8&&iz<.5)))yaw+=angD(yaw,rot+Math.PI)*(1-Math.exp(-(riding?3:1.2)*dt));
  cam.fov+=((60+(riding?Math.min(18,Math.abs(spd)*.7):0))-cam.fov)*(1-Math.exp(-4*dt));cam.updateProjectionMatrix();
  const pp=player.g.position,dist=riding?9:6.5;
