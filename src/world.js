@@ -279,6 +279,34 @@ export async function loadWorld(T, scene, colliders) {
           rail.position.set(cx,by+.55,front-.3); grp.add(rail);
           for(let post=-1;post<=1;post++){const bar=new T.Mesh(new T.BoxGeometry(.07,.55,.07),mat(0x333b40));bar.position.set(cx+post*balconyW/2,by+.28,front-.3);grp.add(bar)}
         }
+        // Obras pequeñas en edificios seleccionados: andamios, tablones y materiales.
+        // Son detalles visuales; no alteran el acceso ni la colisión del edificio.
+        if (bw > 7 && bd > 7 && bi % 19 === 6) {
+          const span = Math.min(4.8, bw * .62), front = b[2] - .72;
+          const left = cx - span / 2, right = cx + span / 2;
+          const poleMat = mat(0x68777a), plankMat = mat(0xb58b58);
+          for (const x of [left, right]) {
+            const pole = new T.Mesh(new T.BoxGeometry(.12, hh + .8, .12), poleMat);
+            pole.position.set(x, (hh + .8) / 2, front); pole.castShadow = true; grp.add(pole);
+            for (let y = 1.8; y < hh; y += 2.1) {
+              const brace = new T.Mesh(new T.BoxGeometry(.1, .1, 1.35), poleMat);
+              brace.position.set(x, y, front + .55); grp.add(brace);
+            }
+          }
+          for (let y = 1.7; y < hh; y += 2.1) {
+            const rail = new T.Mesh(new T.BoxGeometry(span + .18, .1, .1), poleMat);
+            rail.position.set(cx, y, front); grp.add(rail);
+            const deck = new T.Mesh(new T.BoxGeometry(span + .28, .12, .72), plankMat);
+            deck.position.set(cx, y + .18, front + .3); deck.castShadow = true; grp.add(deck);
+          }
+          for (let i = 0; i < 3; i++) {
+            const bag = new T.Mesh(new T.BoxGeometry(.62, .42, .48), mat(i % 2 ? 0xc7bda7 : 0xb9b0a0));
+            bag.position.set(right + .55 + (i % 2) * .12, .22 + Math.floor(i / 2) * .43, front + .25);
+            grp.add(bag);
+          }
+          const warning = new T.Mesh(new T.BoxGeometry(1.35, .72, .08), mat(0xe0ad35));
+          warning.position.set(cx, .72, front - .38); grp.add(warning);
+        }
         colliders.push({ x0: b[0], x1: b[1], z0: b[2], z1: b[3], k, poly: p });
       } catch {}
     });
