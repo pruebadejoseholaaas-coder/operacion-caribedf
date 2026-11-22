@@ -146,6 +146,21 @@ export function createBusinessSystem(T, scene, colliders) {
   cube(g,.2,.1,.2,0x4b9b62,.62,1.22,.55);
   // Equipamiento particular por categoría.
   if(data.id==='colmado'){
+    // Marquesina frontal de lona, típica de pequeños colmados de barrio.
+    cube(g,7.15,.14,1.12,0x287b4c,0,3.12,front+.48);
+    for(let i=0;i<9;i++){
+     const stripe=new T.Mesh(new T.BoxGeometry(.78,.035,1.08),new T.MeshBasicMaterial({color:i%2===0?0x3b965e:0xe9e2c9}));
+     stripe.position.set(-3.12+i*.78,3.205,front+.48);g.add(stripe);
+    }
+    cube(g,7.18,.12,.12,0x174f36,0,3.02,front+1.02);
+    for(const px of [-3.25,3.25]){
+     cube(g,.09,.12,1.05,0x4b4d42,px,2.94,front+.48);
+     cube(g,.12,.12,.12,0x4b4d42,px,2.84,front+.98);
+    }
+    // Cartel pequeño de agua y refrescos junto a la entrada.
+    cube(g,.72,.92,.045,0x1d6683,3.45,1.55,front+.035);
+    cube(g,.58,.12,.055,0xe9f1e9,3.45,1.82,front+.07);
+    cube(g,.42,.1,.055,0x9bcbd8,3.45,1.55,front+.07);
     // Neveras comerciales junto a la pared derecha.
     for(let i=0;i<2;i++){
      cube(g,.92,2.05,.78,0x3c8791,2.62,1.05,-1.35+i*1.12);
