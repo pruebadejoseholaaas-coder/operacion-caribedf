@@ -264,7 +264,7 @@ stick.addEventListener('pointerdown',e=>{sid=e.pointerId;stick.setPointerCapture
 stick.addEventListener('pointermove',e=>{if(e.pointerId===sid)sv(e)});
 const end=e=>{if(e.pointerId===sid){sid=null;jx=jy=0;knob.style.left=knob.style.top='40px'}};
 stick.addEventListener('pointerup',end);stick.addEventListener('pointercancel',end);
-$('bE').addEventListener('click',toggle);
+$('bE').addEventListener('click',interact);
 $('bF').addEventListener('click',()=>businessSystem?.interact(player.g.position));
 $('bR').addEventListener('click',()=>{run=!run;$('bR').style.opacity=run?1:.7});
 const near=()=>Math.hypot(player.g.position.x-moto.position.x,player.g.position.z-moto.position.z)<3.5;
@@ -332,7 +332,7 @@ if(saved&&Number.isInteger(saved.weatherIndex))weatherIndex=Math.max(0,Math.min(
 if(saved&&Number.isFinite(saved.weatherElapsed))weatherElapsed=Math.max(0,saved.weatherElapsed);
 if(saved&&Number.isFinite(saved.energy))energy=Math.max(0,Math.min(100,saved.energy));
 if(saved&&Number.isFinite(saved.shirt))shirtColor=saved.shirt;
-function saveGame(){try{const p=player.g.position;localStorage.setItem(SAVE_KEY,JSON.stringify({x:p.x,z:p.z,mx:moto.position.x,mz:moto.position.z,rot,yaw,pitch,roleId:role?.id||null,missionDone,worldClock,weatherIndex,weatherElapsed,npcTrust:npcs.map(n=>n.trust||0),energy,shirt:shirtColor,houseLights:house?house.lightsOn():true,jobsDone:jobs?jobs.progress().done:0,reputation:jobs?jobs.progress().rep:0}))}catch{}}
+function saveGame(){try{const p=player.g.position;localStorage.setItem(SAVE_KEY,JSON.stringify({x:p.x,z:p.z,mx:moto.position.x,mz:moto.position.z,rot,yaw,pitch,roleId:role?.id||null,missionDone,worldClock,weatherIndex,weatherElapsed,npcTrust:npcs.map(n=>n.trust||0),energy,shirt:shirtColor,houseLights:house?house.lightsOn():true,insideHouse:!!house?.inside(),jobsDone:jobs?jobs.progress().done:0,reputation:jobs?jobs.progress().rep:0,job:jobs?jobs.serialize():null}))}catch{}}
 let saveClock=0;
 const beam=new T.Mesh(new T.CylinderGeometry(.7,.7,80,10,1,true),new T.MeshBasicMaterial({color:0x4361ee,transparent:true,opacity:.45,side:T.DoubleSide}));
 beam.position.set(0,40,-72);beam.visible=false;scene.add(beam);
@@ -438,6 +438,12 @@ loadWorld(T,scene,colliders).then(w=>{if(!w)return;world=w;
  document.getElementById('minimap')?.addEventListener('click',()=>minimap.toggle());
  const savedRole=ROLES.find(r=>r.id===saved?.roleId);if(savedRole)pick(savedRole);
  if(saved&&Number.isFinite(saved.shirt)){shirtColor=saved.shirt;redress()}
+ if(saved?.insideHouse){
+  const dx=house.door.x-house.home.x,dz=house.door.z-house.home.z,l=Math.hypot(dx,dz)||1;
+  player.g.position.set(house.door.x+dx/l*2.2,0,house.door.z+dz/l*2.2);
+  if(house.enter(player)){rot=Math.PI;yaw=0;pitch=.2;camDist=5.0;vx=vz=spd=0;minimap?.setVisible(false)}
+ }
+ jobs?.restore(saved?.job);
  ui.update();
  $('mission').textContent=missionDone?'Objetivo completado · Explora la ciudad':'Objetivo: llega al punto de encuentro';
  saveGame();
@@ -468,6 +474,8 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
   vx+=(mx/ml*mag*speed-vx)*k;vz+=(mz/ml*mag*speed-vz)*k;
  }
  const bx=obj.x+vx*dt,bz=obj.z+vz*dt;obj.x=bx;obj.z=bz;resolve(obj,riding?.7:.45);
+ trafficSystem?.collide(obj,riding?.8:.45);
+ if(!riding)for(const n of npcs){if(!n.g.visible)continue;const dx=obj.x-n.g.position.x,dz=obj.z-n.g.position.z,d=Math.hypot(dx,dz);if(d<.72&&d>1e-4){obj.x+=dx/d*(.72-d);obj.z+=dz/d*(.72-d)}}
  const cor=Math.hypot(obj.x-bx,obj.z-bz);
  if(riding&&cor>.001){spd*=Math.max(.15,1-cor*5);vx*=.85;vz*=.85}
  const sp=Math.hypot(vx,vz);
@@ -516,7 +524,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
  goalRing.scale.setScalar(1+.12*Math.sin(t*3));
  goalBeacon.material.opacity=.35+.2*(.5+.5*Math.sin(t*2));
  if(world&&(wt+=dt)>.4){wt=0;world.update(pp.x,pp.z)}
- if((saveClock+=dt)>10){saveClock=0;saveGame()}hint.style.display=msg?'block':'none';hint.textContent=msg;$('bE').textContent=riding?'Bajar':'Subir';
+ if((saveClock+=dt)>10){saveClock=0;saveGame()}hint.style.display=msg?'block':'none';hint.textContent=msg;$('bE').textContent=riding?'Bajar':(house?.inside()?'Usar':(jobs?.hint()?'Usar':(house?.nearDoor(pp)?'Entrar':(near()?'Subir':'Usar'))));
  renderer.render(scene,cam)}
 addEventListener('pagehide',saveGame);
 loop();

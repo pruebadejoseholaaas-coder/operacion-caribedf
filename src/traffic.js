@@ -272,11 +272,12 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
     g.position.set(sx, 0, sz); g.rotation.y = Math.atan2(e.dx, e.dz); scene.add(g);
     const ox = -e.dz, oz = e.dx;
     const pax = [];
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 3; i++) {
       const p = makePassenger();
-      const hx = sx + ox * .95 + e.dx * (i ? .9 : -.9), hz = sz + oz * .95 + e.dz * (i ? .9 : -.9);
-      p.position.set(hx, 0, hz); p.rotation.y = Math.atan2(-ox, -oz); scene.add(p);
-      pax.push({ g: p, home: [hx, hz], state: 'wait', timer: 0, from: null, to: null, t: 0 });
+      const hx = sx + ox * .95 + e.dx * (i === 0 ? -.9 : i === 1 ? .9 : 1.9), hz = sz + oz * .95 + e.dz * (i === 0 ? -.9 : i === 1 ? .9 : 1.9);
+      p.position.set(hx, 0, hz); p.rotation.y = Math.atan2(-ox, -oz);
+      p.visible = i < 2; scene.add(p);
+      pax.push({ g: p, home: [hx, hz], state: i < 2 ? 'wait' : 'away', timer: 0, from: null, to: null, t: 0, arrival: i === 2 });
     }
     stops.push({ x: sx, z: sz, g, node: n.k, pax, busy: null, ox, oz });
   }
@@ -461,12 +462,14 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
           b.boarded = true;
         }
         if (!b.alighted && b.t > .95) {
-          const p = b.pax;
+          const p = s.pax.find(q => q.arrival && q.state === 'away');
           if (p) {
             const v = b.v, e = v.edge, rx = -e.dz, rz = e.dx;
-            p.g.position.set(v.g.position.x + rx * 1.05 - e.dx * v.model.length * .15, 0, v.g.position.z + rz * 1.05 - e.dz * v.model.length * .15);
-            p.state = 'alighting'; p.t = 0; p.from = [p.g.position.x, p.g.position.z]; p.to = p.home;
-            b.pax = null;
+            const dx = v.g.position.x + rx * 1.05 - e.dx * v.model.length * .15;
+            const dz = v.g.position.z + rz * 1.05 - e.dz * v.model.length * .15;
+            p.g.visible = true; p.g.position.set(dx, 0, dz);
+            p.state = 'alighting'; p.t = 0; p.from = [dx, dz]; p.to = p.home;
+            b.alighter = p;
           }
           b.alighted = true;
         }
@@ -486,7 +489,7 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
         } else {
           p.g.position.y = Math.abs(Math.sin(clock * 1.6 + p.home[0])) * .02;
         }
-        p.g.visible = near && p.state !== 'gone';
+        p.g.visible = near && p.state !== 'gone' && p.state !== 'away';
       }
     }
 
@@ -507,8 +510,18 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
     }
   }
 
+  function collide(pos, radius = .45) {
+    for (const v of vehicles) {
+      if (!v.g.visible) continue;
+      const dx = pos.x - v.g.position.x, dz = pos.z - v.g.position.z;
+      const d = Math.hypot(dx, dz);
+      const r = Math.max(v.model.width, v.model.length) * .42 + radius;
+      if (d < r && d > 1e-4) { const push = (r - d) / d; pos.x += dx * push; pos.z += dz * push; }
+    }
+  }
+
   return {
-    update, vehicles, stops, graph,
+    update, collide, vehicles, stops, graph,
     stats: () => ({ vehicles: vehicles.length, parked: parked.length, nodes: graph.nodes.size, lights: graph.lights.length, stops: stops.length, passengers: stops.reduce((n, s) => n + s.pax.filter(p => p.state === 'wait').length, 0) })
   };
 }

@@ -90,7 +90,7 @@ export function createJobSystem(T, scene, opts) {
 
   function cancelDelivery() {
     if (!delivery) return;
-    delivery = null; setDeliveryMarker(0, 0); ui()?.toast('Encargo cancelado');
+    delivery = null; setDeliveryMarker(0, 0); save(); ui()?.toast('Encargo cancelado');
   }
 
   function startDelivery() {
@@ -108,6 +108,7 @@ export function createJobSystem(T, scene, opts) {
     const dist = Math.hypot(d.x - p.x, d.z - p.z);
     delivery = { shop, x: d.x, z: d.z, reward: Math.round(180 + dist * .9) };
     setDeliveryMarker(d.x, d.z);
+    save();
     ui()?.toast('Encargo aceptado: ' + shop.data.name + ' · Pago RD$ ' + delivery.reward, 3800);
   }
 
@@ -153,6 +154,7 @@ export function createJobSystem(T, scene, opts) {
       shift.targets = picked;
     }
     setMarker(shift.x, shift.z, 0xf4a261);
+    save();
     ui()?.toast(def.label + ' · Ve a ' + shop.data.name + ' y pulsa E', 4200);
   }
 
@@ -237,6 +239,7 @@ export function createJobSystem(T, scene, opts) {
   function cancelShift() {
     if (!shift) return;
     shift = null; hideMarker(); clearShiftProps();
+    save();
     ui()?.toast('Turno cancelado sin pago');
   }
 
@@ -269,6 +272,61 @@ export function createJobSystem(T, scene, opts) {
       if (t && Math.hypot(p.x - t.x, p.z - t.z) < 7) return 'E para entregar el paquete';
     }
     return null;
+  }
+
+  function serialize() {
+    if (delivery) return { kind: 'delivery', shopId: delivery.shop.data.id, reward: delivery.reward };
+    if (shift) return {
+      kind: 'shift', type: shift.type, shopId: shift.shop.data.id, phase: shift.phase,
+      timeLeft: shift.timeLeft, duration: shift.duration, served: shift.served, goal: shift.goal,
+      spawnT: shift.spawnT, cool: shift.cool, ti: shift.ti,
+      targets: shift.targets ? shift.targets.map(t => t.shop.data.id) : null
+    };
+    return null;
+  }
+
+  function restore(state) {
+    if (!state) return;
+    if (state.kind === 'delivery') {
+      const shop = shops().find(s => s.data.id === state.shopId);
+      if (!shop) return;
+      const d = doorOf(shop);
+      delivery = { shop, x: d.x, z: d.z, reward: state.reward || 0 };
+      setDeliveryMarker(d.x, d.z);
+      return;
+    }
+    if (state.kind !== 'shift') return;
+    const def = SHIFT_DEFS[state.type];
+    const shop = shops().find(s => s.data.id === state.shopId);
+    if (!def || !shop) return;
+    const d = doorOf(shop);
+    shift = {
+      type: state.type, def, shop, x: d.x, z: d.z,
+      phase: state.phase === 'work' ? 'work' : 'travel',
+      timeLeft: Math.max(0, Number(state.timeLeft) || def.duration),
+      duration: Number(state.duration) || def.duration,
+      served: Math.max(0, state.served | 0), goal: Math.max(1, state.goal | 0 || def.goal),
+      spawnT: Number.isFinite(state.spawnT) ? state.spawnT : 1.2,
+      cool: Math.max(0, Number(state.cool) || 0),
+      customer: false, targets: null, ti: Math.max(0, state.ti | 0)
+    };
+    if (Array.isArray(state.targets)) {
+      shift.targets = state.targets.map(id => {
+        const t = shops().find(x => x.data.id === id);
+        return t ? { shop: t, ...doorOf(t) } : null;
+      }).filter(Boolean);
+    }
+    if (shift.phase === 'work') {
+      if (shift.type === 'taller') {
+        const r = shift.shop.g.rotation.y;
+        const x = shift.x + Math.sin(r) * 1.4, z = shift.z + Math.cos(r) * 1.4;
+        car.position.set(x, 0, z); car.rotation.y = r + Math.PI / 2; car.visible = true;
+        shift.task = { x, z }; setMarker(x, z, 0x7fe0a8);
+      } else if (shift.type === 'reparto') {
+        const t = shift.targets && shift.targets[shift.ti];
+        if (t) setMarker(t.x, t.z, 0x7fe0a8);
+      }
+    } else setMarker(shift.x, shift.z, 0xf4a261);
   }
 
   function missionText() {
@@ -330,7 +388,7 @@ export function createJobSystem(T, scene, opts) {
   }
 
   return {
-    update, interact, hint, missionText, offers, startShift, cancelShift, startDelivery, cancelDelivery,
+    update, interact, hint, missionText, offers, startShift, cancelShift, startDelivery, cancelDelivery, serialize, restore,
     shiftSummary, deliverySummary, progress: () => ({ ...progress }),
     setProgress: (done, rep) => { progress.done = Math.max(0, done | 0); progress.rep = Math.max(0, Math.min(100, rep | 0)); },
     deliveryMarker: () => delivery ? { x: delivery.x, z: delivery.z } : null,
