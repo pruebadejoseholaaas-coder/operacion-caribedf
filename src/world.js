@@ -141,7 +141,22 @@ export async function loadWorld(T, scene, colliders) {
         const hh = h || 6.4 + (id % 3) * 3.2;
         const g = new T.ExtrudeGeometry(shape(p), { depth: hh, bevelEnabled: false }); g.rotateX(-Math.PI / 2);
         const me = new T.Mesh(g, [roof, wall(PAL[id % PAL.length])]); me.castShadow = me.receiveShadow = true; grp.add(me);
-        const b = boxes[bi];
+        const b = boxes[bi], bw=b[1]-b[0], bd=b[3]-b[2], cx=(b[0]+b[1])/2, cz=(b[2]+b[3])/2;
+        // Detalles habituales de viviendas dominicanas: tinacos y balcones sencillos.
+        if (bw>3.5 && bd>3.5 && bi%4===0) {
+          const tank = new T.Mesh(new T.CylinderGeometry(.42,.48,1.05,7),mat(0x303b42));
+          tank.position.set(cx,hh+.53,cz); tank.castShadow=true; grp.add(tank);
+          const lid = new T.Mesh(new T.CylinderGeometry(.43,.43,.08,7),mat(0x59656b));
+          lid.position.set(cx,hh+1.08,cz); grp.add(lid);
+        }
+        if (bw>5 && bd>5 && bi%7===0) {
+          const balconyW=Math.min(3.8,bw*.55), front=cz-bd/2-.34, by=Math.min(hh-1.2,3.1);
+          const deck=new T.Mesh(new T.BoxGeometry(balconyW,.12,.72),mat(0x9c9387));
+          deck.position.set(cx,by,front); grp.add(deck);
+          const rail=new T.Mesh(new T.BoxGeometry(balconyW,.12,.08),mat(0x333b40));
+          rail.position.set(cx,by+.55,front-.3); grp.add(rail);
+          for(let post=-1;post<=1;post++){const bar=new T.Mesh(new T.BoxGeometry(.07,.55,.07),mat(0x333b40));bar.position.set(cx+post*balconyW/2,by+.28,front-.3);grp.add(bar)}
+        }
         colliders.push({ x0: b[0], x1: b[1], z0: b[2], z1: b[3], k, poly: p });
       } catch {}
     });
