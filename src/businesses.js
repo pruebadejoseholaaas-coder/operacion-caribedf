@@ -449,7 +449,66 @@ export function createBusinessSystem(T, scene, colliders) {
    }
   }
   if(data.id==='jugos'){for(let i=0;i<2;i++){const m=new T.Mesh(new T.CylinderGeometry(.13,.16,.38,10),material(0x7eb8c7));m.position.set(2.4,.55,-1+i*.65);g.add(m)}}
-  if(data.id==='panaderia'||data.id==='reposteria'){cube(g,1.25,1.35,.9,0x51433a,2.55,.8,-1.55);cube(g,.9,.7,.08,0xe4b66d,2.55,.85,-1.05);for(let i=0;i<3;i++)cube(g,.9,.1,.5,0xb18a5b,-2.7,.5+i*.42,-1.2)}
+  if(data.id==='panaderia'){
+   // Panadería tradicional: horno de mampostería, bandejas y pan recién horneado.
+   cube(g,1.9,1.65,1.35,0x9b7654,2.45,.92,-1.85);
+   cube(g,1.55,1.05,.08,0x4a3428,2.45,.92,-1.14);
+   cube(g,1.32,.82,.045,0x242321,2.45,.98,-1.085);
+   cube(g,1.72,.12,.12,0xb5a18a,2.45,1.55,-1.08);
+   // Chimenea corta y salida superior del horno.
+   cube(g,.48,1.15,.5,0x805b45,3.05,2.28,-2.15);
+   cube(g,.62,.12,.62,0x51433a,3.05,2.88,-2.15);
+   // Estantería de madera con panes de agua y panes sobaos.
+   for(let row=0;row<3;row++){
+    cube(g,2.05,.12,.62,0x805b3d,-2.65,.58+row*.68,-2.15);
+    for(let i=0;i<5;i++){
+     const loaf=new T.Mesh(new T.SphereGeometry(.19,10,7),material(data.products[(i+row)%data.products.length][2]));
+     loaf.scale.set(1.45,.62,.82);
+     loaf.position.set(-3.42+i*.38,.78+row*.68,-2.15);
+     g.add(loaf);
+    }
+   }
+   // Bandejas metálicas con panecillos listos para despacho.
+   for(let row=0;row<2;row++){
+    cube(g,1.65,.07,.78,0xb9c0c2,-.25,1.02+row*.42,-1.48);
+    for(let i=0;i<4;i++){
+     const bread=new T.Mesh(new T.SphereGeometry(.17,9,7),material(data.products[(i+row)%data.products.length][2]));
+     bread.scale.set(1.25,.62,.8);
+     bread.position.set(-.82+i*.38,1.16+row*.42,-1.48);
+     g.add(bread);
+    }
+   }
+   // Mesa de amasado, masa y rodillo.
+   cube(g,1.85,.78,.92,0x8b6348,.05,.52,-2.75);
+   cube(g,1.92,.1,.98,0xe4dfd2,.05,.96,-2.75);
+   const dough=new T.Mesh(new T.SphereGeometry(.25,12,9),material(0xe8d6ad));
+   dough.scale.set(1.35,.38,1);
+   dough.position.set(-.25,1.08,-2.75);
+   g.add(dough);
+   const rollingPin=new T.Mesh(new T.CylinderGeometry(.055,.055,.62,10),material(0x9c754f));
+   rollingPin.rotation.z=Math.PI/2;
+   rollingPin.position.set(.48,1.1,-2.75);
+   g.add(rollingPin);
+   // Sacos de harina junto a la mesa de trabajo.
+   for(let i=0;i<3;i++){
+    const sack=new T.Mesh(new T.CylinderGeometry(.27,.34,.72,10),material(i===1?0xd6c8a8:0xb9a783));
+    sack.position.set(-3.15+i*.62,.55,.55);
+    g.add(sack);
+    cube(g,.38,.07,.38,0xe8dfc9,-3.15+i*.62,.94,.55);
+   }
+   // Vitrina de panes y cartel de especialidades en el frente.
+   cube(g,1.9,.72,.62,0x76513a,2.25,.55,.18);
+   cube(g,1.94,.07,.68,0xb9c0c2,2.25,.95,.18);
+   for(let i=0;i<4;i++){
+    const display=new T.Mesh(new T.SphereGeometry(.16,9,7),material(data.products[i][2]));
+    display.scale.set(1.3,.65,.85);
+    display.position.set(1.55+i*.46,1.13,.18);
+    g.add(display);
+   }
+   cube(g,1.85,.9,.08,0x704b35,-2.45,2.05,front+.035);
+   for(let i=0;i<4;i++)cube(g,1.3,.055,.035,i%2?0xf0d9aa:0xf4eee1,-2.45,2.34-i*.19,front+.085);
+  }
+  if(data.id==='reposteria'){cube(g,1.25,1.35,.9,0x51433a,2.55,.8,-1.55);cube(g,.9,.7,.08,0xe4b66d,2.55,.85,-1.05);for(let i=0;i<3;i++)cube(g,.9,.1,.5,0xb18a5b,-2.7,.5+i*.42,-1.2)}
   if(data.id==='carniceria'||data.id==='pescaderia'){cube(g,1.65,.9,.9,0x9bbbc1,2.5,.55,-1.4);cube(g,1.7,.12,.94,0xeaf4f4,2.5,1.03,-1.4);for(let i=0;i<3;i++){const m=new T.Mesh(new T.SphereGeometry(.2,8,6),material(data.products[i][2]));m.position.set(2.15+i*.35,1.13,-1.4);g.add(m)}}
   // Equipos propios de los diez comercios de esta ampliación.
   if(data.id==='pollera'){cube(g,1.7,1.05,.9,0xb9d5d8,2.55,.6,-1.35);cube(g,1.72,.1,.92,0xf4f5ed,2.55,1.18,-1.35);for(let i=0;i<3;i++)cube(g,.42,.28,.42,0xe4cdb2,2.1+i*.45,1.38,-1.35)}
