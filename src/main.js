@@ -214,11 +214,53 @@ let npcGreetingCooldown=0;
 function greetNearbyNpc(){
  const pp=player.g.position,nearby=npcs.filter(n=>n.g.visible&&n.g.position.distanceTo(pp)<4.5).sort((a,b)=>a.g.position.distanceTo(pp)-b.g.position.distanceTo(pp));
  if(!nearby.length){if(talkEl){talkEl.textContent='No hay nadie suficientemente cerca para saludar.';talkEl.style.display='block';talkRemaining=2.2}return}
- const n=nearby[0],hour=worldClock/3600,first=n.trust<1,answers={amable:['¡Buenas! ¿Cómo tú estás?','¡Qué bueno verte por aquí!'],reservado:['Buenas. Todo tranquilo.','Hola, ¿todo bien?'],alegre:['¡Eeeh, qué lo qué!','¡Activo! Que tengas buen día.'],tranquilo:['Hola, espero que todo marche bien.','Buenas, aquí estamos.']};
- n.trust=Math.min(5,(n.trust||0)+1);n.mood=n.trust>=3?'familiar':'amigable';n.greetingReact=1.35;n.greetingLevel=n.trust;n.g.rotation.y=Math.atan2(pp.x-n.g.position.x,pp.z-n.g.position.z);
- const options=hour<6?['A esta hora casi todo está tranquilo.','La ciudad todavía está despertando.']:hour>=18?['Ya va cayendo la noche.','Que tengas buena noche.']:answers[n.personality]||answers.tranquilo;
- const line=first?options[Math.floor(Math.random()*options.length)]:n.trust>=3?'¡Ya nos conocemos! ¿Cómo va todo?':options[Math.floor(Math.random()*options.length)];
- if(talkEl){talkEl.textContent=n.name+' ('+n.occupation+'): «'+line+'» · Confianza '+n.trust+'/5';talkEl.style.display='block';talkRemaining=4.5} speakNpc(line);
+ const n=nearby[0],hour=worldClock/3600,first=n.trust<1;
+ const answers={
+  amable:['¡Buenas! ¿Cómo tú estás?','¡Qué bueno verte por aquí!'],
+  reservado:['Buenas. Todo tranquilo.','Hola, ¿todo bien?'],
+  alegre:['¡Eeeh, qué lo qué!','¡Activo! Que tengas buen día.'],
+  tranquilo:['Hola, espero que todo marche bien.','Buenas, aquí estamos.']
+ };
+ const workTalk={
+  dependiente:['Hoy han pasado muchos clientes por el negocio.','Estoy organizando la mercancía.'],
+  maestra:['Los estudiantes siempre traen algo nuevo que contar.','Hoy toca preparar las clases.'],
+  motoconchista:['La calle está movida; hay que conducir con calma.','Estoy esperando el próximo pasajero.'],
+  enfermera:['Hoy ha sido una jornada bastante ocupada.','Lo importante es atender a las personas con paciencia.'],
+  mecánico:['Tengo un vehículo pendiente en el taller.','Estoy revisando unas piezas.'],
+  estilista:['Hoy tengo varios turnos en el salón.','Cada cliente llega con una idea diferente.'],
+  estudiante:['Tengo algunas tareas que terminar.','Voy organizando mis apuntes para las clases.'],
+  cocinera:['Ya casi está lista la comida.','Hoy estamos preparando algo bien criollo.'],
+  repartidor:['Tengo que completar unas entregas.','Estoy pendiente de la próxima dirección.'],
+  vendedora:['Estoy acomodando los productos.','Hoy hay variedad para los clientes.'],
+  electricista:['Estoy revisando una instalación.','Siempre hay que trabajar con cuidado.'],
+  costurera:['Tengo una prenda pendiente de terminar.','Estoy preparando un diseño nuevo.'],
+  panadero:['El pan recién hecho siempre atrae clientes.','La jornada empieza temprano en la panadería.'],
+  contable:['Estoy organizando unas cuentas.','Un negocio necesita llevar sus números al día.'],
+  barbero:['Tengo que preparar el próximo turno.','Cada quien tiene su propio estilo.'],
+  agricultora:['Hay que cuidar los cultivos todos los días.','La cosecha requiere paciencia.'],
+  taxista:['Estoy esperando una carrera.','El tránsito cambia mucho según la hora.'],
+  secretaria:['Tengo varios asuntos que organizar.','Estoy poniendo al día unos documentos.'],
+  carpintero:['Estoy trabajando en un mueble.','La madera necesita buenas medidas.'],
+  diseñadora:['Estoy pensando en una idea nueva.','A veces los mejores diseños empiezan con un boceto.'],
+  guardia:['Estoy atento a lo que pasa por aquí.','Todo tranquilo por esta zona.'],
+  emprendedora:['Siempre aparece algo nuevo que mejorar en el negocio.','Estoy pensando en nuevas ideas para mis clientes.']
+ };
+ n.trust=Math.min(5,(n.trust||0)+1);
+ n.mood=n.trust>=3?'familiar':'amigable';
+ n.greetingReact=1.35;n.greetingLevel=n.trust;
+ n.g.rotation.y=Math.atan2(pp.x-n.g.position.x,pp.z-n.g.position.z);
+ let options=answers[n.personality]||answers.tranquilo;
+ if(n.routineState==='trabajando'&&workTalk[n.occupation])options=workTalk[n.occupation];
+ if(hour<6)options=['A esta hora casi todo está tranquilo.','La ciudad todavía está despertando.'];
+ else if(hour>=18)options=['Ya va cayendo la noche.','Que tengas buena noche.'];
+ let line;
+ if(first)line=options[Math.floor(Math.random()*options.length)];
+ else if(n.trust>=5)line='¡Qué bueno verte otra vez! Ya eres conocido por aquí.';
+ else if(n.trust>=3)line='¡Ya nos conocemos! ¿Cómo va todo?';
+ else line=options[Math.floor(Math.random()*options.length)];
+ const relation=n.trust>=5?'Conocido':n.trust>=3?'Amistoso':'Te reconoce';
+ if(talkEl){talkEl.textContent=n.name+' ('+n.occupation+'): «'+line+'» · '+relation+' · Confianza '+n.trust+'/5';talkEl.style.display='block';talkRemaining=4.5}
+ speakNpc(line);
 }
 let drag=null;const cvs=renderer.domElement;
 cvs.addEventListener('pointerdown',e=>{drag={id:e.pointerId,x:e.clientX,y:e.clientY}});
