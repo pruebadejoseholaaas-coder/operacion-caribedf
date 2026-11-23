@@ -386,7 +386,7 @@ export function createJobSystem(T, scene, opts) {
     return {
       kind: 'shift', type: shift.type, name: shift.def.label, detail: shift.def.verb,
       time: mmss(shift.timeLeft), served: shift.served, goal: shift.goal,
-      phase: shift.phase, where: shift.shop.data.name, pay: shift.served * shift.def.per
+      phase: shift.phase, where: shift.shop.data.name, pay: shift.served * shift.def.per, x: shift.x, z: shift.z
     };
   }
   function deliverySummary() {

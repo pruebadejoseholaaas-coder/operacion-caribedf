@@ -763,7 +763,7 @@ export function createBusinessSystem(T, scene, colliders, world, avoid = []) {
    s.restockT-=dt;
    if(s.restockT<=0){s.restockT=50+Math.random()*45;let restocked=false;for(let i=0;i<s.stock.length;i++)if(s.stock[i]<12){s.stock[i]++;restocked=true}if(restocked)save()}
    if(s.registerPulse>0){s.registerPulse=Math.max(0,s.registerPulse-dt*2);s.register.scale.setScalar(1+s.registerPulse*.22)}
-   s.g.visible=distance<260;s.worker.g.visible=s.open&&distance<85;
+   s.g.visible=distance<260;s.worker.g.visible=s.open&&distance<85&&!s.actualStaff;
    const stations=[[-2.4,-.65],[0,-.65],[2.3,-.65]],target=stations[Math.floor(s.phase/5)%stations.length];s.worker.g.position.x+=(target[0]-s.worker.g.position.x)*(1-Math.exp(-dt*1.7));s.worker.g.position.z+=(target[1]-s.worker.g.position.z)*(1-Math.exp(-dt*1.7));s.worker.a.rotation.x=Math.sin(s.phase*3)*.55;s.worker.b.rotation.x=-Math.sin(s.phase*3)*.55;
    // Clientes: entran desde la acera, compran en el mostrador y salen.
    if(distance<120){

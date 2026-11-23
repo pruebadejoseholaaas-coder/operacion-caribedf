@@ -26,12 +26,13 @@ const JOB_SHOPS = {
   emprendedora: ['ventorrillo', 'colmado', 'reposteria']
 };
 
-export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swing }) {
+export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swing, interiors: interiorApi }) {
   const nodes = [...graph.nodes.values()];
   const byKey = new Map(nodes.map(n => [n.k, n]));
   const shopList = typeof shops === 'function' ? shops() : (shops || []);
   const homes = assignHomes();
-  const works = assignWorks();
+  let interiors = interiorApi || null;
+  let works = assignWorks();
   let clock = 8 * 3600;
 
   function nearestNode(x, z) {
@@ -97,7 +98,7 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
       if (!last2 || Math.hypot(last2.x - p2.x, last2.z - p2.z) > .35) pts.push(p2);
     }
     if (end) pts.push(avoidBuildings({ x: end.x, z: end.z }));
-    return pts;
+    return trimPath(repairPath(pts));
   }
 
   function routeTo(n, target, kind) {
@@ -123,16 +124,80 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
     return { x: node.x - e.dz * off, z: node.z + e.dx * off, node };
   }
 
+  function resetPose(n) {
+    n.g.position.y = 0; n.g.rotation.x = 0;
+    if (n.legL) n.legL.rotation.x = 0;
+    if (n.legR) n.legR.rotation.x = 0;
+    if (n.armL) n.armL.rotation.x = 0;
+    if (n.armR) n.armR.rotation.x = 0;
+  }
+
   function animate(n, t, moving) {
-    if (swing) swing(n, moving ? Math.sin((t + n.t) * 8) * .42 : 0);
+    const action = n.citizen?.action || 'walk';
+    if (action === 'sleep') {
+      n.g.position.y = .52; n.g.rotation.x = -Math.PI / 2;
+      if (n.legL) n.legL.rotation.x = -.15;
+      if (n.legR) n.legR.rotation.x = -.15;
+      if (n.armL) n.armL.rotation.x = -.25;
+      if (n.armR) n.armR.rotation.x = -.25;
+      return;
+    }
+    if (action === 'sit' || action === 'eat') {
+      n.g.position.y = .30; n.g.rotation.x = 0;
+      if (n.legL) n.legL.rotation.x = -1.25;
+      if (n.legR) n.legR.rotation.x = -1.25;
+      const eat = action === 'eat' ? Math.sin((t + n.t) * 5) * .18 : 0;
+      if (n.armL) n.armL.rotation.x = -1.15 + eat;
+      if (n.armR) n.armR.rotation.x = -1.15 - eat;
+      return;
+    }
+    if (action === 'serve') {
+      n.g.position.y = 0; n.g.rotation.x = 0;
+      if (n.legL) n.legL.rotation.x = 0;
+      if (n.legR) n.legR.rotation.x = 0;
+      if (n.armL) n.armL.rotation.x = -1.0;
+      if (n.armR) n.armR.rotation.x = -.45;
+      n.g.rotation.x = .06;
+      return;
+    }
+    if (action === 'work') {
+      n.g.position.y = 0; n.g.rotation.x = 0;
+      const task = n.citizen?.task || 'cashier';
+      const beat = Math.sin((t + n.t) * (task === 'cook' ? 6 : 3.5));
+      if (n.legL) n.legL.rotation.x = 0;
+      if (n.legR) n.legR.rotation.x = 0;
+      if (task === 'cook') {
+        if (n.armL) n.armL.rotation.x = -.85 + beat * .35;
+        if (n.armR) n.armR.rotation.x = -.85 - beat * .35;
+      } else if (task === 'barber' || task === 'mechanic') {
+        if (n.armL) n.armL.rotation.x = -.75 + beat * .16;
+        if (n.armR) n.armR.rotation.x = -.95 - beat * .16;
+      } else {
+        if (n.armL) n.armL.rotation.x = -.55 + beat * .10;
+        if (n.armR) n.armR.rotation.x = -.55 - beat * .10;
+      }
+      return;
+    }
+    if (moving || action === 'walk' || action === 'enter') {
+      resetPose(n);
+      if (swing) swing(n, Math.sin((t + n.t) * 8) * .42);
+      return;
+    }
+    resetPose(n);
   }
 
   function arrive(n, t) {
     const c = n.citizen, hour = t / 3600;
     if (c.pathKind === 'toWork') {
-      c.state = hour >= n.shiftStart ? 'working' : 'waiting';
-      n.g.rotation.y = Math.atan2(n.work.x - n.g.position.x, n.work.z - n.g.position.z);
+      if (interiors?.enterNpcWork(n)) {
+        c.state = hour >= n.shiftStart ? 'working' : 'waiting';
+        c.action = 'enter';
+      } else {
+        c.state = hour >= n.shiftStart ? 'working' : 'waiting';
+        n.g.rotation.y = Math.atan2(n.work.x - n.g.position.x, n.work.z - n.g.position.z);
+      }
     } else if (c.pathKind === 'toHome') {
+      if (interiors?.enterNpcHome(n)) c.action = 'enter';
       c.state = 'home';
     } else if (c.pathKind === 'leisure') {
       c.state = 'leisureIdle'; c.idleT = 2 + Math.random() * 4;
@@ -164,6 +229,7 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
     clock = worldClock;
     const hour = worldClock / 3600;
     const sleeping = n.sleepStart > n.sleepEnd ? (hour >= n.sleepStart || hour < n.sleepEnd) : (hour >= n.sleepStart && hour < n.sleepEnd);
+    if (c.inside) n.g.visible = interiors?.npcVisible(c.inside) ?? true;
 
     if (n.pause > 0) {
       n.pause = Math.max(0, n.pause - dt);
@@ -173,33 +239,58 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
     }
 
     if (sleeping) {
-      if (c.state !== 'sleeping') {
-        if (Math.hypot(n.g.position.x - n.home.x, n.g.position.z - n.home.z) < 1.2) {
-          c.state = 'sleeping'; n.g.visible = false; c.path = []; c.pathKind = null;
-        } else {
-          if (c.pathKind !== 'toHome' || !c.path.length) routeTo(n, n.home, 'toHome');
-          move(n, dt, t, .95);
+      const insideHome = c.inside && (c.insideKind === 'home' || c.inside.startsWith('home-'));
+      if (insideHome) {
+        if (c.state !== 'sleeping') { c.state = 'sleeping'; c.action = 'sleep'; c.path = []; c.pathKind = null; }
+        interiors.moveNpc(n, 'bed', dt, .7);
+        animate(n, t, false);
+      } else {
+        if (c.inside) {
+          interiors.exitNpc(n);
+          c.state = 'toHome'; c.path = []; c.pathKind = null; c.action = 'walk';
         }
-      } else n.g.visible = false;
+        if (c.state !== 'sleeping') {
+          if (Math.hypot(n.g.position.x - n.home.x, n.g.position.z - n.home.z) < 2.2) {
+            if (interiors?.enterNpcHome(n)) {
+              c.state = 'sleeping'; c.action = 'sleep'; c.path = []; c.pathKind = null;
+              animate(n, t, false);
+            } else {
+              c.state = 'sleeping'; n.g.visible = false; c.path = []; c.pathKind = null;
+            }
+          } else {
+            if (c.pathKind !== 'toHome' || !c.path.length) routeTo(n, n.home, 'toHome');
+            move(n, dt, t, .95);
+          }
+        } else n.g.visible = false;
+      }
       n.routineState = 'durmiendo';
       return;
     }
 
     if (c.state === 'sleeping') {
-      n.g.position.set(n.home.x, 0, n.home.z);
+      if (c.inside) interiors.exitNpc(n);
+      else n.g.position.set(n.home.x, 0, n.home.z);
       n.g.visible = true;
-      n.pause = 0; c.state = 'preparing'; c.path = []; c.pathKind = null; c.stateSince = 0;
+      n.pause = 0; c.state = 'preparing'; c.action = 'walk'; c.path = []; c.pathKind = null; c.stateSince = 0;
     }
 
     const leave = n.shiftStart - .65, returnAt = n.shiftEnd + 1.35;
 
     if (c.state === 'home' || c.state === 'preparing') {
       if (hour >= leave && hour < n.shiftEnd) {
+        if (c.inside) interiors.exitNpc(n);
         if (c.state !== 'toWork') routeTo(n, n.work, 'toWork');
         move(n, dt, t, 1.05);
+      } else if (c.inside) {
+        n.routineState = 'libre'; n.activity = hour < leave ? 'preparing' : 'rest';
+        const key = hour < leave ? 'bath' : 'sofa';
+        const done = interiors.moveNpc(n, key, dt, .8);
+        c.action = done ? (hour < leave ? 'walk' : 'sit') : 'walk';
+        animate(n, t, !done);
       } else {
         n.routineState = 'libre'; n.activity = hour < leave ? 'preparing' : 'rest';
-        animate(n, t, false);
+        if (c.pathKind !== 'toHome' || !c.path.length) routeTo(n, n.home, 'toHome');
+        move(n, dt, t, .95);
       }
       return;
     }
@@ -208,26 +299,47 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
 
     if (c.state === 'waiting') {
       n.routineState = 'trabajando';
+      if (c.inside) {
+        interiors.moveNpc(n, c.stationKey || c.insideTarget || 'station', dt, .9);
+        c.action = 'wait'; animate(n, t, false);
+      }
       if (hour >= n.shiftStart) c.state = 'working';
-      animate(n, t, false);
       return;
     }
 
     if (c.state === 'working') {
       n.routineState = 'trabajando'; n.activity = 'work';
-      if (hour >= 12 && hour < 13) { c.state = 'break'; c.stateSince = 0; animate(n, t, false); return; }
-      if (hour >= n.shiftEnd) {
-        c.state = 'leisure'; routeTo(n, randomLeisure(n), 'leisure'); move(n, dt, t, .9);
+      if (!c.inside) {
+        if (interiors?.enterNpcWork(n)) { c.state = 'working'; c.action = 'enter'; }
+        animate(n, t, false);
         return;
       }
-      animate(n, t, Math.sin(t * 4) * .12);
+      if (hour >= 12 && hour < 13) {
+        c.state = 'break'; c.stateSince = 0; c.action = 'eat';
+        animate(n, t, false);
+        return;
+      }
+      if (hour >= n.shiftEnd) {
+        interiors.exitNpc(n);
+        c.state = 'leisure'; c.action = 'walk'; routeTo(n, randomLeisure(n), 'leisure'); move(n, dt, t, .9);
+        return;
+      }
+      const done = interiors.moveNpc(n, c.stationKey || c.insideTarget || 'station', dt, .7);
+      if (done && c.insideKind === 'shop' && n.work.shop) {
+        const visits = n.work.shop.visits || 0;
+        if (visits > (c.lastVisits || 0)) { c.lastVisits = visits; c.serveT = 2.2; }
+        c.serveT = Math.max(0, (c.serveT || 0) - dt);
+        if (c.serveT > 0) { c.action = 'serve'; animate(n, t, false); return; }
+      }
+      c.action = done ? 'work' : 'walk';
+      animate(n, t, !done);
       return;
     }
 
     if (c.state === 'break') {
       n.routineState = 'descanso';
+      c.action = 'eat'; animate(n, t, false);
       if (hour >= 13) c.state = 'working';
-      animate(n, t, false);
       return;
     }
 
@@ -297,6 +409,10 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
 
   function assignWorks() {
     return npcs.map((n, i) => {
+      const inst = interiors?.workFor(n.occupation);
+      if (inst) {
+        return { institution: inst.id.replace('inst-', ''), shop: null, shopId: null, x: inst.door.x, z: inst.door.z, node: nearestNode(inst.door.x, inst.door.z), label: inst.name, station: inst.station[n.occupation] };
+      }
       const ids = JOB_SHOPS[n.occupation] || [];
       const shop = shopList.find(s => ids.includes(s.data.id)) || shopList[i % Math.max(1, shopList.length)];
       if (!shop) { const h = homes[i]; return { shop: null, shopId: null, x: h.x, z: h.z, node: h.node, label: 'casa' }; }
@@ -306,6 +422,13 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
     });
   }
 
+  function attachInteriors(api) {
+    interiors = api;
+    works = assignWorks();
+  }
+
+  function homeDoors() { return homes; }
+
   function initialize(worldClock = 8 * 3600) {
     clock = worldClock;
     npcs.forEach((n, i) => {
@@ -313,7 +436,8 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
       n.work = works[i] || { x: n.home.x, z: n.home.z, node: n.home.node, label: 'casa' };
       n.homeIndex = i;
       n.workShopId = n.work.shopId;
-      n.citizen = { state: 'home', path: [], pathIndex: 0, pathKind: null, stateSince: 0, idleT: 0, target: null, activity: 'rest', maxStep: 0 };
+      n.workInstitution = n.work.institution || null;
+      n.citizen = { state: 'home', path: [], pathIndex: 0, pathKind: null, stateSince: 0, idleT: 0, target: null, activity: 'rest', maxStep: 0, inside: null, insideKind: null, insidePath: [], insideIndex: 0, insideTarget: null, stationKey: null, action: 'walk', task: null, serveT: 0, lastVisits: 0 };
       n.g.position.set(n.home.x, 0, n.home.z);
       n.g.visible = true;
       n.pause = 0;
@@ -327,7 +451,9 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
       path: (n.citizen?.path || []).map(p => [+p.x.toFixed(2), +p.z.toFixed(2)]),
       pathIndex: n.citizen?.pathIndex || 0, x: +n.g.position.x.toFixed(2), z: +n.g.position.z.toFixed(2),
       visible: n.g.visible !== false, homeIndex: n.homeIndex, workShopId: n.workShopId,
-      idleT: n.citizen?.idleT || 0
+      idleT: n.citizen?.idleT || 0, inside: n.citizen?.inside || null, insideKind: n.citizen?.insideKind || null,
+      insideTarget: n.citizen?.insideTarget || null, stationKey: n.citizen?.stationKey || null, serveT: n.citizen?.serveT || 0, lastVisits: n.citizen?.lastVisits || 0, task: n.citizen?.task || null,
+      action: n.citizen?.action || 'walk', workInstitution: n.work?.institution || null
     }));
   }
 
@@ -337,16 +463,54 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
       const n = npcs[d.i];
       if (!n) continue;
       if (Number.isFinite(d.homeIndex) && homes[d.homeIndex]) n.home = homes[d.homeIndex];
-      if (d.workShopId) { const w = works.find(o => o.shopId === d.workShopId); if (w) n.work = w; }
+      if (d.workInstitution) { const w = works.find(o => o.institution === d.workInstitution); if (w) n.work = w; }
+      else if (d.workShopId) { const w = works.find(o => o.shopId === d.workShopId); if (w) n.work = w; }
       n.citizen.state = d.state || 'home';
       n.citizen.path = Array.isArray(d.path) ? d.path.map(([x, z]) => ({ x, z })) : [];
       n.citizen.pathIndex = Math.max(0, d.pathIndex | 0);
       n.citizen.pathKind = d.pathKind || null;
       n.citizen.idleT = Number(d.idleT) || 0;
+      n.citizen.inside = d.inside || null;
+      n.citizen.insideKind = d.insideKind || (d.inside?.startsWith('home-') ? 'home' : d.inside?.startsWith('inst-') ? 'institution' : d.inside?.startsWith('shop-') ? 'shop' : null);
+      n.citizen.insideTarget = d.insideTarget || null;
+      n.citizen.stationKey = d.stationKey || null;
+      n.citizen.serveT = Number(d.serveT) || 0;
+      n.citizen.lastVisits = Number(d.lastVisits) || 0;
+      n.citizen.task = d.task || null;
+      n.citizen.action = d.action || 'walk';
       n.citizen.maxStep = 0;
       n.g.position.set(Number.isFinite(d.x) ? d.x : n.home.x, 0, Number.isFinite(d.z) ? d.z : n.home.z);
-      n.g.visible = d.visible !== false && n.citizen.state !== 'sleeping';
+      if (n.citizen.inside) interiors?.restoreNpc(n);
+      else n.g.visible = d.visible !== false;
     }
+  }
+
+  function trimPath(pts) {
+    const out = [];
+    for (const p of pts) {
+      if (!outsideAll(p.x, p.z)) break;
+      if (out.length && !segmentSafe(out[out.length - 1], p)) break;
+      out.push(p);
+    }
+    return out;
+  }
+
+  function repairPath(pts) {
+    if (!pts.length) return pts;
+    const out = [pts[0]];
+    for (let i = 1; i < pts.length; i++) {
+      const seg = repairSegment(out[out.length - 1], pts[i], 0);
+      for (let k = 1; k < seg.length; k++) out.push(seg[k]);
+    }
+    return out;
+  }
+
+  function repairSegment(a, b, depth) {
+    if (segmentSafe(a, b) || depth >= 4) return [a, b];
+    const mid = avoidBuildings({ x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 });
+    if (Math.hypot(mid.x - a.x, mid.z - a.z) < .05 || Math.hypot(mid.x - b.x, mid.z - b.z) < .05) return [a, b];
+    const left = repairSegment(a, mid, depth + 1), right = repairSegment(mid, b, depth + 1);
+    return [...left, ...right.slice(1)];
   }
 
   function segmentSafe(a, b) {
@@ -439,7 +603,7 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
       clock, counts,
       npcs: npcs.map(n => ({
         name: n.name, occupation: n.occupation, state: n.citizen?.state, routine: n.routineState,
-        visible: n.g.visible, home: n.home && [+n.home.x.toFixed(1), +n.home.z.toFixed(1)],
+        visible: n.g.visible, inside: n.citizen?.inside || null, insideKind: n.citizen?.insideKind || null, task: n.citizen?.task || null, action: n.citizen?.action || 'walk', home: n.home && [+n.home.x.toFixed(1), +n.home.z.toFixed(1)],
         homePos: n.home && [n.home.x, n.home.z], work: n.work?.label, workPos: n.work && [n.work.x, n.work.z], path: n.citizen?.path.length || 0, index: n.citizen?.pathIndex || 0, maxStep: +(n.citizen?.maxStep || 0).toFixed(2),
         pos: [+n.g.position.x.toFixed(1), +n.g.position.z.toFixed(1)]
       })),
@@ -447,5 +611,5 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
     };
   }
 
-  return { initialize, updateNpc, serialize, restore, simulate, setClock, debug };
+  return { initialize, updateNpc, serialize, restore, simulate, setClock, debug, attachInteriors, homeDoors };
 }

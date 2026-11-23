@@ -12,6 +12,7 @@ import { createAudio } from './audio.js';
 import { createMenu } from './menu.js';
 import { createMissionSystem } from './missions.js';
 import { createCitizenSystem } from './citizens.js';
+import { createInteriorSystem } from './interiors.js';
 
 const T=THREE,$=id=>document.getElementById(id);
 const renderer=new T.WebGLRenderer({antialias:true});
@@ -304,7 +305,7 @@ function resolve(p,r){for(const c of colliders){
  const cx=Math.max(c.x0,Math.min(p.x,c.x1)),cz=Math.max(c.z0,Math.min(p.z,c.z1));
  let dx=p.x-cx,dz=p.z-cz,d=Math.hypot(dx,dz);
  if(d<r){if(d<.001){dx=1;dz=0;d=1}p.x=cx+dx/d*r;p.z=cz+dz/d*r}}
- if(!house?.inside()){p.x=Math.max(-lim.x,Math.min(lim.x,p.x));p.z=Math.max(-lim.z,Math.min(lim.z,p.z))}}
+ if(!house?.inside()&&!interiors?.playerInside()){p.x=Math.max(-lim.x,Math.min(lim.x,p.x));p.z=Math.max(-lim.z,Math.min(lim.z,p.z))}}
 const angD=(a,b)=>{let d=b-a;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;return d};
 function applyQuality(quality,shadows){
  const dpr=window.devicePixelRatio||1;
@@ -346,7 +347,7 @@ if(saved&&Number.isInteger(saved.weatherIndex))weatherIndex=Math.max(0,Math.min(
 if(saved&&Number.isFinite(saved.weatherElapsed))weatherElapsed=Math.max(0,saved.weatherElapsed);
 if(saved&&Number.isFinite(saved.energy))energy=Math.max(0,Math.min(100,saved.energy));
 if(saved&&Number.isFinite(saved.shirt))shirtColor=saved.shirt;
-function saveGame(){try{const p=player.g.position;localStorage.setItem(SAVE_KEY,JSON.stringify({x:p.x,z:p.z,mx:moto.position.x,mz:moto.position.z,rot,yaw,pitch,roleId:role?.id||null,missionDone,worldClock,weatherIndex,weatherElapsed,npcTrust:npcs.map(n=>n.trust||0),npcRoutines:citizens?citizens.serialize():null,energy,shirt:shirtColor,houseLights:house?house.lightsOn():true,insideHouse:!!house?.inside(),jobsDone:jobs?jobs.progress().done:0,reputation:jobs?jobs.progress().rep:0,job:jobs?jobs.serialize():null}))}catch{}}
+function saveGame(){try{const p=player.g.position;localStorage.setItem(SAVE_KEY,JSON.stringify({x:p.x,z:p.z,mx:moto.position.x,mz:moto.position.z,rot,yaw,pitch,roleId:role?.id||null,missionDone,worldClock,weatherIndex,weatherElapsed,npcTrust:npcs.map(n=>n.trust||0),npcRoutines:citizens?citizens.serialize():null,energy,shirt:shirtColor,houseLights:house?house.lightsOn():true,insideHouse:!!house?.inside(),insideInterior:interiors?.playerInside()||null,interiorX:p.x,interiorZ:p.z,jobsDone:jobs?jobs.progress().done:0,reputation:jobs?jobs.progress().rep:0,job:jobs?jobs.serialize():null}))}catch{}}
 let saveClock=0;
 const beam=new T.Mesh(new T.CylinderGeometry(.7,.7,80,10,1,true),new T.MeshBasicMaterial({color:0x4361ee,transparent:true,opacity:.45,side:T.DoubleSide}));
 beam.position.set(0,40,-72);beam.visible=false;scene.add(beam);
@@ -374,6 +375,23 @@ function redress(){
  player=person(shirtColor,0x2b3a55,0xc68a5e,0x111111,true);
  player.g.position.copy(old);player.g.rotation.y=ro;scene.add(player.g);
  if(riding){player.g.rotation.order='YXZ';player.legL.rotation.x=player.legR.rotation.x=-1.2;player.armL.rotation.x=player.armR.rotation.x=-1.1}
+}
+function enterInterior(rec){
+ if(!interiors||!rec)return;
+ const r=interiors.enterPlayer(rec.id,player,lim);
+ if(!r)return;
+ rot=Math.PI;yaw=0;pitch=.2;camDist=5.0;vx=vz=spd=0;player.g.rotation.y=Math.PI;
+ talkRemaining=0;if(talkEl)talkEl.style.display='none';
+ minimap?.setVisible(false);
+ ui?.toast(r.name+' · E para salir',3500);
+}
+function exitInterior(){
+ if(!interiors)return;
+ const p=interiors.exitPlayer(player,lim);
+ if(!p)return;
+ rot=Math.PI;yaw=Math.PI;pitch=.35;camDist=6.5;vx=vz=spd=0;player.g.rotation.y=Math.PI;
+ minimap?.setVisible(true);
+ ui?.toast('Has salido a la calle');
 }
 function enterHouse(){
  if(!house)return;
@@ -430,13 +448,19 @@ function shootBall(){
 }
 function interact(){
  if(house?.inside()){if(!houseAction())ui?.toast('Acércate a la puerta, la cama, la nevera, el armario o la caja');return}
+ if(interiors?.playerInside()){
+  if(interiors.nearExit(player.g.position)){exitInterior();return}
+  ui?.toast('Acércate a la puerta para salir');return
+ }
  if(jobs?.interact())return;
  if(missions?.interact(player.g.position))return;
  if(court&&!riding&&Math.hypot(player.g.position.x-court.x,player.g.position.z-court.z)<11){shootBall();return}
+ const interiorDoor=interiors?.nearDoor(player.g.position);
+ if(interiorDoor){enterInterior(interiorDoor);return}
  if(house?.nearDoor(player.g.position)){enterHouse();return}
  toggle();
 }
-let world=null,wt=0,audioClock=0,fpsSmooth=60,fpsClock=0,court=null,courtT=0;
+let world=null,wt=0,audioClock=0,fpsSmooth=60,fpsClock=0,court=null,courtT=0,interiors=null;
 loadWorld(T,scene,colliders).then(w=>{if(!w)return;world=w;
  scene.children.slice(legacyStart+1,legacyEnd).forEach(o=>o.visible=false);
  ground.material.map=null;ground.material.color.set(0x8f8a7e);ground.material.needsUpdate=true;
@@ -450,8 +474,11 @@ loadWorld(T,scene,colliders).then(w=>{if(!w)return;world=w;
  player.g.position.set(w.spawn[0],0,w.spawn[1]);moto.position.set(w.moto[0],0,w.moto[1]);moto.rotation.y=w.moto[2];
  GOAL.set(w.goal[0],0,w.goal[1]);beam.position.set(w.goal[0],40,w.goal[1]);
  w.update(w.spawn[0],w.spawn[1]);
- addInstitution(-33.2,6.3,12,16,3,'HOSPITAL MUNICIPAL','hospital');
- addInstitution(-18.2,-38.7,12,16,2,'ESCUELA PÚBLICA','school');
+ const institutionDefs=[
+  {id:'hospital',name:'HOSPITAL MUNICIPAL',kind:'hospital',x:-33.2,z:6.3,w:12,d:16,floors:3,door:{x:-33.2,z:6.3+8+1.4}},
+  {id:'school',name:'ESCUELA PÚBLICA',kind:'school',x:-18.2,z:-38.7,w:12,d:16,floors:2,door:{x:-18.2,z:-38.7+8+1.4}}
+ ];
+ for(const d of institutionDefs)addInstitution(d.x,d.z,d.w,d.d,d.floors,d.name,d.kind);
  goalMark.position.set(GOAL.x,0,GOAL.z);goalMark.visible=true;
  if(saved&&Number.isFinite(saved.x)&&Number.isFinite(saved.z)){
    player.g.position.set(saved.x,0,saved.z);
@@ -463,6 +490,8 @@ loadWorld(T,scene,colliders).then(w=>{if(!w)return;world=w;
  trafficSystem=createTrafficSystem(T,scene,colliders,w,{mobile:mobileDevice});
  if(trafficSystem?.graph){
   citizens=createCitizenSystem({npcs,graph:trafficSystem.graph,shops:businessSystem.shops,buildings:w.buildings,spawn:{x:w.spawn[0],z:w.spawn[1]},swing});
+  interiors=createInteriorSystem({T,scene,colliders,shops:businessSystem.shops,npcs,homes:citizens.homeDoors(),institutions:institutionDefs});
+  citizens.attachInteriors(interiors);
   citizens.initialize(worldClock);
   citizens.restore(saved?.npcRoutines);
  }else activateCityLife(w.roads||[],player.g.position.x,player.g.position.z);
@@ -491,6 +520,10 @@ loadWorld(T,scene,colliders).then(w=>{if(!w)return;world=w;
   setVoices:v=>{voiceEnabled=v;if(!v)try{speechSynthesis.cancel()}catch{}}
  });
  document.getElementById('minimap')?.addEventListener('click',()=>minimap.toggle());
+ if(saved?.insideInterior&&interiors?.enterPlayer(saved.insideInterior,player,lim)){
+  if(Number.isFinite(saved.x)&&Number.isFinite(saved.z))player.g.position.set(saved.x,0,saved.z);
+  rot=Math.PI;yaw=0;pitch=.2;camDist=5.0;vx=vz=spd=0;minimap?.setVisible(false);
+ }
  const savedRole=ROLES.find(r=>r.id===saved?.roleId);if(savedRole)pick(savedRole);
  if(saved&&Number.isFinite(saved.shirt)){shirtColor=saved.shirt;redress()}
  if(saved?.insideHouse){
@@ -503,7 +536,7 @@ loadWorld(T,scene,colliders).then(w=>{if(!w)return;world=w;
  $('mission').textContent=missionDone?'Objetivo completado · Explora la ciudad':'Objetivo: llega al punto de encuentro';
  saveGame();
 });
-if(import.meta.env.DEV)window.__oc={scene,renderer,cam,colliders,world:()=>world,traffic:()=>trafficSystem,business:()=>businessSystem,house:()=>house,ui:()=>ui,jobs:()=>jobs,ambience:()=>ambience,audio:()=>audio,menu:()=>menu,missions:()=>missions,citizens:()=>citizens,court:()=>court,save:()=>saveGame(),insideShop:()=>businessSystem?.insideShop?!!businessSystem.insideShop():false,npcs,player:()=>player,moto,view:()=>({yaw,rot}),state:()=>({energy,job:jobs?.shiftSummary()||jobs?.deliverySummary(),shirtColor,worldClock,inside:!!house?.inside(),progress:jobs?.progress()}),setClock:v=>{worldClock=v},setWeather:v=>{weatherIndex=Math.max(0,Math.min(weatherTypes.length-1,v|0));weatherElapsed=0},setView:(y,r)=>{if(Number.isFinite(y))yaw=y;if(Number.isFinite(r)){rot=r;player.g.rotation.y=r}}};
+if(import.meta.env.DEV)window.__oc={scene,renderer,cam,colliders,world:()=>world,traffic:()=>trafficSystem,business:()=>businessSystem,house:()=>house,ui:()=>ui,jobs:()=>jobs,ambience:()=>ambience,audio:()=>audio,menu:()=>menu,missions:()=>missions,citizens:()=>citizens,interiors:()=>interiors,court:()=>court,save:()=>saveGame(),insideShop:()=>businessSystem?.insideShop?!!businessSystem.insideShop():false,npcs,player:()=>player,moto,view:()=>({yaw,rot}),state:()=>({energy,job:jobs?.shiftSummary()||jobs?.deliverySummary(),shirtColor,worldClock,inside:!!house?.inside(),progress:jobs?.progress()}),setClock:v=>{worldClock=v},setWeather:v=>{weatherIndex=Math.max(0,Math.min(weatherTypes.length-1,v|0));weatherElapsed=0},setView:(y,r)=>{if(Number.isFinite(y))yaw=y;if(Number.isFinite(r)){rot=r;player.g.rotation.y=r}}};
 const clock=new T.Clock(),hint=$('h');
 function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.05);t+=dt;
  const menuOpen=!!menu?.isOpen();

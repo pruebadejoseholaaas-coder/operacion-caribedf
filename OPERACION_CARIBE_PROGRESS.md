@@ -1,6 +1,6 @@
 # Operación Caribe — Informe de progreso
 
-Actualizado: 2026-11-22 · Rama: `mundo-abierto-trafico-minimapa` (quinto bloque)
+Actualizado: 2026-11-22 · Rama: `mundo-abierto-trafico-minimapa` (sexto bloque · v0.7.0)
 
 Este documento refleja el estado **real y verificado** del proyecto, no solo lo que existe en el código.
 La verificación se hizo compilando con Vite y ejecutando el juego en Chromium headless con WebGL
@@ -160,16 +160,88 @@ en Android físico ni en GPU real.
 - Los NPC son globales y no se descargan por sector. La persistencia se verificó al recargar la
   partida, no con un sistema de streaming de NPC por sector.
 
+## Sexto bloque: interiores funcionales y vida cotidiana (v0.7.0)
+
+### Implementación real
+
+- Nuevo módulo `src/interiors.js`, integrado en `src/main.js` sin sustituir `src/citizens.js`
+  ni eliminar las rutinas, rutas A*, horarios, persistencia, relaciones o conversaciones existentes.
+- **22 viviendas de NPC** con sala, comedor, cocina, dormitorio, baño, plantas, televisor,
+  nevera, cama, armario y colisiones de muebles. Cada casa tiene paleta y cartel con el nombre
+  del habitante. Las casas se construyen en una zona apartada del mapa para no ocupar solares.
+- **Hospital Municipal** con recepción, sala de espera, pasillo y dos consultorios; **Escuela
+  Pública** con dos aulas, pizarras, pupitres, dirección y patio. Ambos tienen interior
+  explorable y personal asignado.
+- **Puestos de trabajo dentro de los 40 comercios existentes**: mostrador, cocina, barbería,
+  taller, almacén y caja. El empleado real entra por la puerta, camina hasta su estación y
+  permanece allí durante su turno. El trabajador decorativo anterior se oculta cuando hay un
+  NPC real trabajando.
+- **Ciclo completo**: sale de la vivienda, recorre la ciudad, entra al edificio, realiza su tarea,
+  atiende clientes, descansa, sale al terminar la jornada, regresa a casa y duerme.
+- **Animaciones conectadas al estado**: caminar, entrar, sentarse, comer, trabajar, atender
+  clientes y dormir acostado. Las poses cambian la posición y las extremidades del modelo.
+- **Visibilidad coherente**: las viviendas e instituciones solo se muestran cuando el jugador
+  está dentro; los empleados de comercio son visibles desde la calle. Los grupos inactivos se
+  ocultan para reducir el coste de render.
+- **Acceso del jugador**: `E` cerca de una puerta de vivienda, hospital o escuela entra; `E` en
+  la puerta interior sale. La posición y el interior se guardan y restauran.
+- **Colisiones**: paredes exteriores, particiones y muebles principales de casas e instituciones.
+  Las rutas interiores se validan contra esos colliders.
+- **Economía integrada**: `shop.actualStaff` indica empleados reales; el cliente que compra
+  dispara la animación de atención del cajero. El personal se reconstruye al recargar.
+- **Persistencia**: se guardan y restauran `inside`, `insideKind`, `insideTarget`, `stationKey`,
+  `task`, `action`, `serveT` y la posición interior de cada NPC.
+- Corrección adicional: `shiftSummary()` expone `x`/`z` para que el HUD y las pruebas no
+  produzcan distancias `NaN` al usar el resumen del turno.
+
+### Pruebas funcionales del sexto bloque
+
+Todas con Vite y Chromium headless/SwiftShader. La prueba visual se hizo con capturas de la
+casa, el hospital y la escuela; no sustituye una prueba en Android físico.
+
+| Prueba | Resultado real |
+| --- | --- |
+| Compilación | `npm run build` correcto en ≈1,5 s; sin `pageerror`. |
+| Viviendas e instituciones | 22 casas, `inst-hospital` e `inst-school` creados. |
+| Día completo 06:00→23:00 | 08:00: 14 trabajando y 8 en casa; 14:00: 17 trabajando y 5 libres; 19:00: 18 en casa y 4 libres; 23:00: 22 durmiendo dentro de su vivienda. |
+| Rutas exteriores | 0 rutas dentro de edificios en todos los muestreos. |
+| Rutas y posiciones interiores | 0 NPC dentro de muebles/paredes y 0 puntos de ruta bloqueados. |
+| Luis (colmado) | 08:00 cajero dentro del colmado; 14:00 fuera en actividad libre; 19:00 sentado en casa; 23:00 acostado durmiendo. |
+| María (escuela) | Maestra dentro de la escuela, en su estación, con acción `work`. |
+| Carla (hospital) | Enfermera dentro del hospital, en su estación, con acción `work`. |
+| Visibilidad | NPC de casa visible al entrar el jugador (`y=0.52`, `rotation.x=-1.57`, acción `sleep`); invisible al salir. Personal de escuela visible dentro. |
+| Acceso del jugador | Entrada y salida correctas en casa, hospital y escuela; el minimapa se oculta dentro. |
+| Persistencia de NPC | 22 rutinas con `inside`, tarea y acción restauradas; 22 durmiendo dentro de casa tras recargar. |
+| Persistencia de trabajo | 17 NPC dentro del trabajo antes y después de recargar; 7 comercios con personal real restaurados. |
+| Persistencia del jugador | Recargar dentro de una vivienda restaura `home-0` y la posición interior. |
+| Empleado decorativo | Oculto en los comercios con `actualStaff > 0` tras el primer frame. |
+| Atención al cliente | Al aumentar `shop.visits`, el cajero cambia a acción `serve` durante 2,2 s. |
+| Animaciones | Trabajo de pie, comer sentado (`y=0.30`, piernas `-1.25`), sentarse en casa y dormir acostado. |
+| Regresión | `final2`, misión, ambientes, casa, cancha, conversación, stock y menú/ajustes sin errores. |
+
+### Limitaciones reales de este bloque
+
+- No hay puertas animadas de apertura/cierre; los accesos son huecos funcionales.
+- Los clientes de comercio siguen siendo visitantes simulados; no hacen cola ni hablan con el
+  jugador. La atención se representa con la animación del cajero y el ciclo de visitas existente.
+- No todos los interiores se han revisado visualmente uno por uno; se verificaron casa, hospital,
+  escuela y los comercios con personal.
+- No se ha probado en Android físico ni se ha medido FPS en GPU real.
+- No hay streaming/descarga de NPC por sector; los 22 NPC y sus interiores se mantienen en memoria,
+  aunque los grupos inactivos se ocultan.
+- El jugador puede entrar a las viviendas de los NPC, pero no hay interacción doméstica propia
+  dentro de ellas (solo la casa del jugador tiene cama, nevera y armario funcionales).
+
 ## Estado por fase
 
 
 | Fase | Estado | Verificado |
 | --- | --- | --- |
-| 1. Mundo y ciudad | Parcial | Calles, aceras, contenes, cruces, pasos de cebra, edificios OSM con fachadas, parques, cancha, agua, árboles, farolas, bancos, papeleras y postes. Faltan interiores de hospital/escuela, más variedad de alturas y mobiliario de calle. |
-| 2. Habitantes e IA | Parcial alto (núcleo implementado) | 22 NPC con identidad, personalidad, vivienda y trabajo asignados, horarios individuales, rutas A* por aceras sin atravesar edificios, estados de dormir/prepararse/ir/trabajar/descansar/volver, animación de caminar/trabajar, saludos, confianza, memoria y persistencia de rutinas. Faltan interiores de casas de NPC, trabajo detrás del mostrador y animaciones de sentarse/comprar. |
+| 1. Mundo y ciudad | Parcial alto | Calles, aceras, contenes, cruces, pasos de cebra, edificios OSM con fachadas, parques, cancha, agua, árboles, farolas, bancos, papeleras y postes; interiores de hospital y escuela. Faltan más variedad de alturas, cableado y mobiliario de calle. |
+| 2. Habitantes e IA | Implementado (núcleo) | 22 NPC con identidad, personalidad, vivienda y trabajo asignados, horarios, rutas A* sin atravesar edificios, ciclo casa-trabajo-casa, interiores de vivienda, hospital y escuela, puestos dentro de comercios, animaciones de caminar/entrar/sentarse/comer/trabajar/atender/dormir, saludos, confianza, memoria y persistencia. Faltan colas de clientes y diálogos encadenados. |
 | 3. Tráfico y transporte | Implementado | Grafo, intersecciones, semáforos, carriles, separación, frenado, estacionados, paradas con pasajeros que suben y bajan, faros nocturnos, colisión dinámica y minimapa. Faltan estacionamientos dedicados y servicio de taxi/público. |
-| 4. Viviendas y vida cotidiana | Parcial alto | Casa con interior, puerta, luces, cama, nevera, armario, inventario, guardado y cocina. Faltan almacenamiento doméstico separado y casas de NPC con acceso. |
-| 5. Negocios y economía | Implementado | 40 comercios con interior, horarios, stock, precios en RD$, empleado, clientes, caja registradora, reposición automática, demanda por hora, ingresos y persistencia. Colocación: 0/40 dentro de edificios. |
+| 4. Viviendas y vida cotidiana | Parcial alto | Casa del jugador completa; 22 casas de NPC explorables con muebles, colisiones y rutinas de dormir/comer/sentarse. Faltan almacenamiento doméstico separado y puertas animadas. |
+| 5. Negocios y economía | Implementado | 40 comercios con interior, horarios, stock, precios en RD$, empleados reales en puestos interiores, clientes, caja, reposición, demanda por hora, ingresos y persistencia. El empleado decorativo se sustituye por el NPC autónomo. |
 | 6. Trabajos y misiones | Parcial alto | Turnos, encargos, reputación y misión encadenada «El recado de Doña Rosa»; cancha con tiro de baloncesto. Faltan más historias, eventos de barrio y actividades que dependan de hora/lugar. |
 | 7. Ambiente y sonido | Parcial alto | Ciclo día/noche, clima, farolas, ventanas iluminadas, lluvia, charcos, nubes, viento en árboles, audio procedural, motor, campana y radio. Faltan sonidos de multitud y música original. |
 | 8. Interfaz y optimización | Parcial alto | Menú principal, ajustes gráficos persistentes, volumen, voces, FPS, guardar/cargar/borrar, minimapa, mapa, teléfono, mochila, controles táctiles y adaptación móvil. Faltan APK Android, LOD/texturas y pruebas en dispositivo real. |
@@ -323,11 +395,9 @@ en Android físico ni en GPU real.
 
 ## Próxima tarea prioritaria
 
-1. **Fase 1 y Fase 4**: interiores de hospital, escuela y casas de NPC, conectados con las rutinas
-   ya implementadas. Es el siguiente hueco funcional importante.
-2. **Fase 2 pulida**: trabajo detrás del mostrador, animaciones de sentarse/comprar y diálogos
-   encadenados.
-3. **Fase 3**: estacionamientos dedicados y servicio de taxi/público.
+1. **Fase 2 pulida**: colas de clientes, conversaciones encadenadas y más tareas por oficio.
+2. **Fase 5**: revisar los 40 comercios uno por uno, añadir productos y tareas específicas.
+3. **Fase 3**: estacionamientos dedicados y servicio de taxi/público con pasajeros.
 4. **Fase 6**: más misiones, historias y eventos de barrio.
 5. **Fase 8**: APK Android con Capacitor, LOD/texturas y prueba en dispositivo real.
 6. **Publicación**: sigue bloqueada por `403`; requiere un token con permiso de escritura.
