@@ -2,7 +2,7 @@
 
 Juego 3D de mundo abierto, inspirado en los grandes atracos, ambientado en la República Dominicana. Se juega en el navegador y más adelante como APK de Android.
 
-> **Estado:** prototipo 0.5. Zona Colonial de Santo Domingo con calles reales (OpenStreetMap), 40 comercios explorables con clientes y reposición, habitantes con rutinas, tráfico con semáforos, pasajeros y faros, minimapa, clima dinámico, noche con farolas y ventanas iluminadas, audio procedural, casa propia, menú principal, ajustes gráficos, teléfono, inventario, encargos, trabajos por turnos, misión encadenada y reputación.
+> **Estado:** prototipo 0.6. Zona Colonial de Santo Domingo con calles reales (OpenStreetMap), 40 comercios explorables con clientes y reposición, habitantes con casa y trabajo asignados, rutas por aceras, horarios individuales, estados de actividad y persistencia; tráfico con semáforos, pasajeros y faros; minimapa, clima dinámico, noche con farolas y ventanas iluminadas; audio procedural, casa propia, menú principal, ajustes gráficos, teléfono, inventario, encargos, trabajos por turnos, misión encadenada y reputación.
 >
 > El estado detallado y verificado de cada fase está en [`OPERACION_CARIBE_PROGRESS.md`](OPERACION_CARIBE_PROGRESS.md).
 
@@ -31,17 +31,17 @@ Abre la dirección que muestre la terminal. Desde el celular, en la misma red Wi
 - [x] Transporte público con pasajeros que esperan, suben y bajan
 - [x] Trabajos por turnos (colmado, reparto, taller) con reputación
 - [x] Interiores de comercios con clientes que entran, compran y salen
+- [x] Habitantes autónomos: casa y trabajo asignados, rutas por aceras, horarios, estados y persistencia
 - [x] Misión encadenada «El recado de Doña Rosa»
 - [x] Audio procedural, noche, lluvia, nubes, viento y radio
 - [x] Menú principal, ajustes gráficos, volumen, FPS y guardado/carga
 - [x] Cancha de baloncesto y actividad recreativa
 - [ ] Historias de más personajes y eventos de barrio
 - [ ] Pruebas en Android físico
-- [ ] Fase 2: sistema de roles (Programador, Planificador, Conductor...)
-- [ ] Fase 3: primer asalto con motor de tramas y giros aleatorios
-- [ ] Fase 4: modo online libre (multijugador, sin misiones)
-- [ ] Fase 5: APK con Capacitor
-- [ ] Fase 6: expansión (más regiones de RD, el Caribe, otros países)
+- [ ] Fase 2 pulida: interiores de casas de NPC, animaciones de sentarse/comprar y diálogos encadenados
+- [ ] Fase 1 ampliada: interiores de hospital/escuela y más variedad arquitectónica
+- [ ] Fase 3 ampliada: estacionamientos dedicados y taxi/público
+- [ ] Fase 8: APK con Capacitor, LOD/texturas y prueba en dispositivo real
 
 ## Estructura
 
@@ -57,6 +57,7 @@ src/ambience.js   Farolas, ventanas, charcos, nubes y viento
 src/audio.js      Audio procedural, radio y motor
 src/menu.js       Menú principal, ajustes y créditos
 src/missions.js   Misión encadenada de Doña Rosa
+src/citizens.js   Habitantes autónomos, rutas, horarios y persistencia
 src/ui.js         Teléfono, mochila, avisos y HUD
 src/style.css     Estilos
 .github/          Publicación automática

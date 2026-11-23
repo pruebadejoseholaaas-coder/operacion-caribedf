@@ -1,6 +1,6 @@
 # Operación Caribe — Informe de progreso
 
-Actualizado: 2026-11-22 · Rama: `mundo-abierto-trafico-minimapa` (cuarto bloque)
+Actualizado: 2026-11-22 · Rama: `mundo-abierto-trafico-minimapa` (quinto bloque)
 
 Este documento refleja el estado **real y verificado** del proyecto, no solo lo que existe en el código.
 La verificación se hizo compilando con Vite y ejecutando el juego en Chromium headless con WebGL
@@ -9,7 +9,7 @@ GPU real, así que el rendimiento final sigue pendiente de validación en dispos
 
 ## Estado de publicación
 
-- Rama local: `mundo-abierto-trafico-minimapa`, con 13 commits sobre `main` (incluye este informe).
+- Rama local: `mundo-abierto-trafico-minimapa`, con 14 commits sobre `main` (incluye este informe).
 - **No se pudo subir a GitHub**: el token de la integración devuelve
   `403 Resource not accessible by integration` al crear la rama o hacer push.
   El repositorio sigue intacto y no se ha abierto ningún Pull Request.
@@ -112,13 +112,61 @@ en Android físico ni en GPU real.
 | Menú y ajustes | menú visible, roles ocultos, Continuar deshabilitado sin partida; calidad alta con DPR 2; volumen 0.20; créditos con OpenStreetMap. |
 | Regresión principal | 16 vehículos, 22 estacionados, 40 comercios, 121 cruces, 10 paradas, 20 pasajeros; sin errores de página. |
 
+## Quinto bloque: Fase 2, habitantes autónomos
+
+### Implementación real
+
+- Nuevo módulo `src/citizens.js`, integrado en `src/main.js` sin eliminar el sistema de NPC existente.
+- **Vivienda asignada**: cada NPC recibe una puerta de edificio cercana a la ciudad. Se elige una
+  fachada orientada a la calle y se comprueba que la puerta quede fuera de todos los edificios.
+- **Trabajo asignado**: cada oficio se mapea a comercios compatibles (colmado, panadería, taller,
+  barbería, etc.). El destino es la puerta del comercio.
+- **Rutas por aceras**: A* sobre el grafo de calles existente de 579 nodos. Cada arista se desplaza
+  hacia la acera derecha. Si una acera está bloqueada por un edificio, se usa el eje de la vía como
+  respaldo seguro. Se comprueban puntos y segmentos contra todos los polígonos de edificios.
+- **Máquina de estados**: `sleeping`, `preparing`, `home`, `toWork`, `waiting`, `working`, `break`,
+  `leisure`, `leisureIdle` y `toHome`. Cada NPC tiene horario propio (`shiftStart`, `shiftEnd`,
+  `sleepStart`, `sleepEnd`) y descanso de mediodía entre 12:00 y 13:00.
+- **Movimiento sin teletransporte**: el NPC avanza punto a punto con velocidad limitada. En la
+  simulación de prueba, el paso máximo fue 0.55 m con `dt=0.5`; no hay saltos de posición.
+- **Persistencia**: `saveGame()` guarda `npcRoutines` con estado, ruta, índice, posición, vivienda y
+  trabajo. Al recargar se restauran las 22 rutinas y las rutas continúan.
+- **Integración conservada**: se mantienen nombres, personalidad, confianza, memoria, saludos,
+  conversaciones contextuales y el bucle de interacción social existente.
+
+### Pruebas funcionales
+
+| Prueba | Resultado real |
+| --- | --- |
+| Estado a las 08:00 | 14 trabajando, 3 esperando, 4 en casa, 1 yendo al trabajo; 0 rutas dentro de edificios. |
+| Estado a las 12:20 | 17 en descanso y 5 aún llegando; 0 rutas inseguras. |
+| Estado a las 16:06 | 8 trabajando, 10 en casa y 4 en actividad libre; 0 rutas inseguras. |
+| Estado a las 23:06 | 22 durmiendo, 0 visibles; 0 rutas inseguras. |
+| Llegada física | 18 trabajadores a menos de 3.2 m de su trabajo; 4 NPC en casa a menos de 3.2 m; 0 fuera de destino. |
+| Persistencia | 22 rutinas guardadas; estados y 209 puntos de ruta restaurados; 0 rutas inseguras. |
+| Conversación | `Luis (dependiente): «¡Buenas! ¿Cómo tú estás?» · Te reconoce · Confianza 1/5`. |
+| Regresión | `final2`: 16 vehículos, 22 estacionados, 40 comercios, 121 cruces, 10 paradas, 20 pasajeros, sin errores. |
+| Misión y menú | La misión de Doña Rosa y el menú/ajustes siguen funcionando sin errores. |
+
+### Limitaciones de esta entrega
+
+- La vivienda asignada es una **puerta de edificio**, no un interior explorable. El NPC desaparece
+  al entrar a dormir; todavía no hay casas de NPC con sala, cama y objetos.
+- El trabajo se realiza en la **puerta del comercio**, no detrás del mostrador. No hay estación de
+  trabajo interior individual.
+- Caminar y trabajar tienen animación; faltan sentarse, comprar y conversaciones encadenadas.
+- Cuando una acera está bloqueada por geometría, la ruta usa el eje de la vía como respaldo. Nunca
+  atraviesa edificios, pero en esos tramos no es estrictamente una acera.
+- Los NPC son globales y no se descargan por sector. La persistencia se verificó al recargar la
+  partida, no con un sistema de streaming de NPC por sector.
+
 ## Estado por fase
 
 
 | Fase | Estado | Verificado |
 | --- | --- | --- |
 | 1. Mundo y ciudad | Parcial | Calles, aceras, contenes, cruces, pasos de cebra, edificios OSM con fachadas, parques, cancha, agua, árboles, farolas, bancos, papeleras y postes. Faltan interiores de hospital/escuela, más variedad de alturas y mobiliario de calle. |
-| 2. Habitantes e IA | Parcial | 22 NPC con nombre, oficio, personalidad, horario, ruta por aceras, saludos, confianza y memoria guardada. **Pendiente principal:** rutas casa-trabajo, conversaciones encadenadas y animaciones de sentarse/comprar. |
+| 2. Habitantes e IA | Parcial alto (núcleo implementado) | 22 NPC con identidad, personalidad, vivienda y trabajo asignados, horarios individuales, rutas A* por aceras sin atravesar edificios, estados de dormir/prepararse/ir/trabajar/descansar/volver, animación de caminar/trabajar, saludos, confianza, memoria y persistencia de rutinas. Faltan interiores de casas de NPC, trabajo detrás del mostrador y animaciones de sentarse/comprar. |
 | 3. Tráfico y transporte | Implementado | Grafo, intersecciones, semáforos, carriles, separación, frenado, estacionados, paradas con pasajeros que suben y bajan, faros nocturnos, colisión dinámica y minimapa. Faltan estacionamientos dedicados y servicio de taxi/público. |
 | 4. Viviendas y vida cotidiana | Parcial alto | Casa con interior, puerta, luces, cama, nevera, armario, inventario, guardado y cocina. Faltan almacenamiento doméstico separado y casas de NPC con acceso. |
 | 5. Negocios y economía | Implementado | 40 comercios con interior, horarios, stock, precios en RD$, empleado, clientes, caja registradora, reposición automática, demanda por hora, ingresos y persistencia. Colocación: 0/40 dentro de edificios. |
@@ -258,8 +306,8 @@ en Android físico ni en GPU real.
 
 - El rendimiento en Android real no está medido. El tráfico y los semáforos usan objetos ligeros,
   pero falta probarlo en un teléfono y medir FPS con calor/consumo.
-- **Fase 2**: los NPC caminan por aceras, pero todavía no tienen rutas casa-trabajo ni
-  conversaciones encadenadas. Es el mayor hueco funcional.
+- **Fase 2**: el núcleo de rutinas casa-trabajo está implementado y probado. Quedan interiores de
+  viviendas de NPC, trabajo interior detrás del mostrador y conversaciones encadenadas.
 - **Fase 1**: hospital y escuela son fachadas; no tienen interior explorable. La variedad de
   alturas y el cableado urbano todavía es limitada.
 - **Fase 3**: no hay estacionamientos dedicados ni servicio de taxi/público con pasajeros.
@@ -275,9 +323,11 @@ en Android físico ni en GPU real.
 
 ## Próxima tarea prioritaria
 
-1. **Fase 2 (habitantes)**: rutas casa-trabajo sobre la red de aceras, conversaciones encadenadas y
-   animaciones de sentarse/comprar. Es el mayor hueco funcional que queda.
-2. **Fase 1**: interiores de hospital y escuela, más variedad de alturas y cableado/mobiliario.
+1. **Fase 1 y Fase 4**: interiores de hospital, escuela y casas de NPC, conectados con las rutinas
+   ya implementadas. Es el siguiente hueco funcional importante.
+2. **Fase 2 pulida**: trabajo detrás del mostrador, animaciones de sentarse/comprar y diálogos
+   encadenados.
 3. **Fase 3**: estacionamientos dedicados y servicio de taxi/público.
-4. **Fase 8**: APK Android con Capacitor, LOD/texturas y prueba en dispositivo real.
-5. **Publicación**: sigue bloqueada por `403`; requiere un token con permiso de escritura.
+4. **Fase 6**: más misiones, historias y eventos de barrio.
+5. **Fase 8**: APK Android con Capacitor, LOD/texturas y prueba en dispositivo real.
+6. **Publicación**: sigue bloqueada por `403`; requiere un token con permiso de escritura.

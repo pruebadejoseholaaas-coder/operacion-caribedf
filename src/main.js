@@ -11,6 +11,7 @@ import { createAmbience } from './ambience.js';
 import { createAudio } from './audio.js';
 import { createMenu } from './menu.js';
 import { createMissionSystem } from './missions.js';
+import { createCitizenSystem } from './citizens.js';
 
 const T=THREE,$=id=>document.getElementById(id);
 const renderer=new T.WebGLRenderer({antialias:true});
@@ -63,7 +64,7 @@ function updateEnvironment(dt,px,pz){
 const mats={},mat=c=>mats[c]||(mats[c]=new T.MeshLambertMaterial({color:c}));
 function box(w,h,l,c,x,y,z,sh=true,par=scene){const m=new T.Mesh(new T.BoxGeometry(w,h,l),mat(c));m.position.set(x,y,z);m.castShadow=sh;m.receiveShadow=true;par.add(m);return m}
 const colliders=[];
-let businessSystem=null,trafficSystem=null,minimap=null,house=null,ui=null,jobs=null,ambience=null,menu=null,missions=null;
+let businessSystem=null,trafficSystem=null,minimap=null,house=null,ui=null,jobs=null,ambience=null,menu=null,missions=null,citizens=null;
 const audio=createAudio();
 if(typeof window!=='undefined')window.addEventListener('pointerdown',()=>audio.start(),{once:true});
 const col=(x0,x1,z0,z1)=>colliders.push({x0,x1,z0,z1});
@@ -345,7 +346,7 @@ if(saved&&Number.isInteger(saved.weatherIndex))weatherIndex=Math.max(0,Math.min(
 if(saved&&Number.isFinite(saved.weatherElapsed))weatherElapsed=Math.max(0,saved.weatherElapsed);
 if(saved&&Number.isFinite(saved.energy))energy=Math.max(0,Math.min(100,saved.energy));
 if(saved&&Number.isFinite(saved.shirt))shirtColor=saved.shirt;
-function saveGame(){try{const p=player.g.position;localStorage.setItem(SAVE_KEY,JSON.stringify({x:p.x,z:p.z,mx:moto.position.x,mz:moto.position.z,rot,yaw,pitch,roleId:role?.id||null,missionDone,worldClock,weatherIndex,weatherElapsed,npcTrust:npcs.map(n=>n.trust||0),energy,shirt:shirtColor,houseLights:house?house.lightsOn():true,insideHouse:!!house?.inside(),jobsDone:jobs?jobs.progress().done:0,reputation:jobs?jobs.progress().rep:0,job:jobs?jobs.serialize():null}))}catch{}}
+function saveGame(){try{const p=player.g.position;localStorage.setItem(SAVE_KEY,JSON.stringify({x:p.x,z:p.z,mx:moto.position.x,mz:moto.position.z,rot,yaw,pitch,roleId:role?.id||null,missionDone,worldClock,weatherIndex,weatherElapsed,npcTrust:npcs.map(n=>n.trust||0),npcRoutines:citizens?citizens.serialize():null,energy,shirt:shirtColor,houseLights:house?house.lightsOn():true,insideHouse:!!house?.inside(),jobsDone:jobs?jobs.progress().done:0,reputation:jobs?jobs.progress().rep:0,job:jobs?jobs.serialize():null}))}catch{}}
 let saveClock=0;
 const beam=new T.Mesh(new T.CylinderGeometry(.7,.7,80,10,1,true),new T.MeshBasicMaterial({color:0x4361ee,transparent:true,opacity:.45,side:T.DoubleSide}));
 beam.position.set(0,40,-72);beam.visible=false;scene.add(beam);
@@ -459,8 +460,12 @@ loadWorld(T,scene,colliders).then(w=>{if(!w)return;world=w;
    if(Number.isFinite(saved.yaw))yaw=saved.yaw;
    if(Number.isFinite(saved.pitch))pitch=Math.max(.08,Math.min(1.2,saved.pitch));
  }
- activateCityLife(w.roads||[],player.g.position.x,player.g.position.z);
  trafficSystem=createTrafficSystem(T,scene,colliders,w,{mobile:mobileDevice});
+ if(trafficSystem?.graph){
+  citizens=createCitizenSystem({npcs,graph:trafficSystem.graph,shops:businessSystem.shops,buildings:w.buildings,spawn:{x:w.spawn[0],z:w.spawn[1]},swing});
+  citizens.initialize(worldClock);
+  citizens.restore(saved?.npcRoutines);
+ }else activateCityLife(w.roads||[],player.g.position.x,player.g.position.z);
  ambience=createAmbience(T,scene,w,{mobile:mobileDevice});
  if(saved&&saved.houseLights===false)house.setLights(false);
  ui=createUI({
@@ -498,7 +503,7 @@ loadWorld(T,scene,colliders).then(w=>{if(!w)return;world=w;
  $('mission').textContent=missionDone?'Objetivo completado · Explora la ciudad':'Objetivo: llega al punto de encuentro';
  saveGame();
 });
-if(import.meta.env.DEV)window.__oc={scene,renderer,cam,colliders,world:()=>world,traffic:()=>trafficSystem,business:()=>businessSystem,house:()=>house,ui:()=>ui,jobs:()=>jobs,ambience:()=>ambience,audio:()=>audio,menu:()=>menu,missions:()=>missions,court:()=>court,insideShop:()=>businessSystem?.insideShop?!!businessSystem.insideShop():false,npcs,player:()=>player,moto,view:()=>({yaw,rot}),state:()=>({energy,job:jobs?.shiftSummary()||jobs?.deliverySummary(),shirtColor,worldClock,inside:!!house?.inside(),progress:jobs?.progress()}),setClock:v=>{worldClock=v},setWeather:v=>{weatherIndex=Math.max(0,Math.min(weatherTypes.length-1,v|0));weatherElapsed=0},setView:(y,r)=>{if(Number.isFinite(y))yaw=y;if(Number.isFinite(r)){rot=r;player.g.rotation.y=r}}};
+if(import.meta.env.DEV)window.__oc={scene,renderer,cam,colliders,world:()=>world,traffic:()=>trafficSystem,business:()=>businessSystem,house:()=>house,ui:()=>ui,jobs:()=>jobs,ambience:()=>ambience,audio:()=>audio,menu:()=>menu,missions:()=>missions,citizens:()=>citizens,court:()=>court,save:()=>saveGame(),insideShop:()=>businessSystem?.insideShop?!!businessSystem.insideShop():false,npcs,player:()=>player,moto,view:()=>({yaw,rot}),state:()=>({energy,job:jobs?.shiftSummary()||jobs?.deliverySummary(),shirtColor,worldClock,inside:!!house?.inside(),progress:jobs?.progress()}),setClock:v=>{worldClock=v},setWeather:v=>{weatherIndex=Math.max(0,Math.min(weatherTypes.length-1,v|0));weatherElapsed=0},setView:(y,r)=>{if(Number.isFinite(y))yaw=y;if(Number.isFinite(r)){rot=r;player.g.rotation.y=r}}};
 const clock=new T.Clock(),hint=$('h');
 function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.05);t+=dt;
  const menuOpen=!!menu?.isOpen();
@@ -537,7 +542,18 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
   player.g.position.set(moto.position.x,.3,moto.position.z);player.g.rotation.y=rot;player.g.rotation.z=moto.rotation.z;
   player.legL.rotation.x=player.legR.rotation.x=-1.2;player.armL.rotation.x=player.armR.rotation.x=-1.1}
  else{player.g.rotation.y=rot;player.g.rotation.z=0;swing(player,Math.sin(t*(sp>6?13:9))*Math.min(1,sp/5)*.9)}
- npcs.forEach(n=>{if(!n.route)return;const hour=worldClock/3600,sleeping=n.sleepStart>n.sleepEnd?(hour>=n.sleepStart||hour<n.sleepEnd):(hour>=n.sleepStart&&hour<n.sleepEnd);n.routineState=sleeping?'durmiendo':hour>=n.shiftStart&&hour<n.shiftEnd?'trabajando':hour>=12&&hour<14?'descanso':'libre';n.g.visible=!sleeping;if(sleeping)return;const fr=abT>0&&role&&role.id==='inf'&&n.g.position.distanceTo(player.g.position)<25;n.pause=Math.max(0,n.pause-dt);const routineSpeed=n.routineState==='trabajando'?1.18:n.routineState==='descanso'?.72:.9;if(!fr&&n.pause<=0){n.progress+=n.dir*n.sp*routineSpeed*dt/Math.max(1,Math.hypot(n.route.b.x-n.route.a.x,n.route.b.z-n.route.a.z));if(n.progress>1){n.progress=1;n.dir=-1;n.pause=1+Math.random()*2}else if(n.progress<0){n.progress=0;n.dir=1;n.pause=1+Math.random()*2}if(Math.random()<.0015){n.pause=2+Math.random()*3;n.activity=Math.random()<.5?'phone':'rest'}}const r=n.route;n.g.position.x=r.a.x+(r.b.x-r.a.x)*n.progress;n.g.position.z=r.a.z+(r.b.z-r.a.z)*n.progress;n.g.rotation.y=Math.atan2((r.b.x-r.a.x)*n.dir,(r.b.z-r.a.z)*n.dir);const idle=n.pause>0||n.routineState==='descanso';swing(n,idle?(n.activity==='phone'?.65:0):Math.sin((t+n.t)*8)*.42);if(n.greetingReact>0){n.greetingReact=Math.max(0,n.greetingReact-dt);const wave=Math.sin((1.35-n.greetingReact)*13)*.22;n.armR.rotation.z=-(n.greetingLevel>=3?1.05:.72)+wave;n.armR.rotation.x=-.35;n.armL.rotation.z=(n.greetingLevel>=3?.48:.18)+wave*.55}else{n.armR.rotation.z=0;n.armL.rotation.z=0}if(idle&&n.activity==='phone'&&n.greetingReact<=0)n.armR.rotation.x=-1.35;const dx=player.g.position.x-n.g.position.x,dz=player.g.position.z-n.g.position.z,playerDistance=Math.hypot(dx,dz),nearPlayer=playerDistance<5.5;const look=nearPlayer?Math.max(-.85,Math.min(.85,Math.atan2(dx,dz)-n.g.rotation.y)):0;n.head.rotation.y+=(look-n.head.rotation.y)*(1-Math.exp(-5*dt));const nod=(n.greetingReact>0?Math.sin((1.35-n.greetingReact)*10)*.08:0)+(idle&&n.activity==='phone'&&n.greetingReact<=0?.2:0);n.head.rotation.x+=(nod-n.head.rotation.x)*(1-Math.exp(7*dt));if(nearPlayer&&playerDistance<2.8&&n.pause<=0&&n.routineState!=='trabajando'){n.pause=.7+Math.random()*.5;n.activity='rest';n.g.rotation.y+=(Math.atan2(dx,dz)-n.g.rotation.y)*(1-Math.exp(5*dt));}});
+ npcs.forEach(n=>{
+  if(citizens)citizens.updateNpc(n,dt,worldClock,t);
+  if(!n.g.visible)return;
+  if(n.greetingReact>0){n.greetingReact=Math.max(0,n.greetingReact-dt);const wave=Math.sin((1.35-n.greetingReact)*13)*.22;n.armR.rotation.z=-(n.greetingLevel>=3?1.05:.72)+wave;n.armR.rotation.x=-.35;n.armL.rotation.z=(n.greetingLevel>=3?.48:.18)+wave*.55}else{n.armR.rotation.z=0;n.armL.rotation.z=0}
+  if(n.pause>0&&n.activity==='phone'&&n.greetingReact<=0)n.armR.rotation.x=-1.35;
+  const dx=player.g.position.x-n.g.position.x,dz=player.g.position.z-n.g.position.z,playerDistance=Math.hypot(dx,dz),nearPlayer=playerDistance<5.5;
+  const look=nearPlayer?Math.max(-.85,Math.min(.85,Math.atan2(dx,dz)-n.g.rotation.y)):0;
+  n.head.rotation.y+=(look-n.head.rotation.y)*(1-Math.exp(-5*dt));
+  const nod=(n.greetingReact>0?Math.sin((1.35-n.greetingReact)*10)*.08:0)+(n.pause>0&&n.activity==='phone'?.2:0);
+  n.head.rotation.x+=(nod-n.head.rotation.x)*(1-Math.exp(7*dt));
+  if(nearPlayer&&playerDistance<2.8&&n.pause<=0&&n.routineState!=='trabajando'){n.pause=.7+Math.random()*.5;n.activity='rest';n.g.rotation.y+=(Math.atan2(dx,dz)-n.g.rotation.y)*(1-Math.exp(5*dt));}
+ });
  for(let i=0;i<npcs.length;i++){const a=npcs[i];a.socialCooldown=Math.max(0,(a.socialCooldown||0)-dt);if(!a.g.visible||a.socialCooldown>0)continue;for(let j=i+1;j<npcs.length;j++){const b=npcs[j];if(!b.g.visible||b.socialCooldown>0)continue;const dx=b.g.position.x-a.g.position.x,dz=b.g.position.z-a.g.position.z;if(dx*dx+dz*dz<7.84){a.socialCooldown=b.socialCooldown=7+Math.random()*5;a.greetingReact=b.greetingReact=1.15;a.greetingLevel=b.greetingLevel=2;a.pause=b.pause=1.15;a.activity=b.activity='rest';a.g.rotation.y=Math.atan2(dx,dz);b.g.rotation.y=Math.atan2(-dx,-dz);const socialByJob={maestra:['¿Cómo van las clases hoy?','Los muchachos vienen con mucha energía.'],estudiante:['¿Ya terminaste las tareas?','Mañana toca levantarse temprano para clases.'],cocinera:['¿Qué se está preparando hoy?','La comida de aquí siempre reúne a la gente.'],panadero:['¿Ya salió el pan caliente?','Desde temprano hay movimiento en la panadería.'],motoconchista:['¿Cómo está la calle por tu ruta?','Hoy hay bastante movimiento en el barrio.'],mecánico:['¿Cómo va ese trabajo del taller?','Poco a poco se resuelven los arreglos.'],agricultora:['¿Cómo va la cosecha esta semana?','Con este sol hay que cuidar los cultivos.'],barbero:['¿Está lleno el negocio hoy?','Cada cliente trae su propio estilo.'],costurera:['¿Cómo va ese encargo?','Ese diseño va quedando muy bien.'],dependiente:['¿Cómo van las ventas hoy?','Hay que mantener la mercancía organizada.'],repartidor:['¿Terminaste las entregas?','Hoy toca recorrer varias calles.'],enfermera:['¿Cómo estuvo el turno?','Ojalá hoy sea una jornada tranquila.']};const jobLines=socialByJob[a.occupation]||socialByJob[b.occupation]||[];const personalityLines=a.personality==='alegre'?['¡Qué bueno encontrarte por aquí!','¡El barrio está activo hoy!']:a.personality==='reservado'?['Buenas, ¿todo en orden?','Que tengas una jornada tranquila.']:['¿Cómo te ha ido hoy?','Nos encontramos por el barrio.'];const pairMood=Math.random(),friendly=Math.min(1,((a.social||.5)+(b.social||.5))/2),exchange=pairMood<friendly*.55?(a.personality==='alegre'||b.personality==='alegre'?'¡Qué bueno verte! ¿Cómo va todo?':'¡Buenas! ¿Cómo va el día?'):pairMood<.82?(a.routineState==='trabajando'||b.routineState==='trabajando'?'Estoy en medio del turno, luego hablamos.':'Nos vemos por el barrio.'):'¡Cuídate, que tengas buen día!';const line=jobLines.length&&Math.random()<.58?jobLines[Math.floor(Math.random()*jobLines.length)]:personalityLines[Math.floor(Math.random()*personalityLines.length)];const finalExchange=Math.random()<.62?line:exchange;if(talkEl){talkEl.textContent=a.name+' y '+b.name+': «'+finalExchange+'»';talkEl.style.display='block';talkRemaining=3.2}break}}}
  trafficSystem?.update(dt,player.g.position,yaw);
  minimap?.update(player.g.position,yaw,rot,performance.now());
