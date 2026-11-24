@@ -1,6 +1,6 @@
 # Operación Caribe — Informe de progreso
 
-Actualizado: 2026-11-22 · Rama: `mundo-abierto-trafico-minimapa` (sexto bloque · v0.7.0)
+Actualizado: 2026-11-22 · Rama: `mundo-abierto-trafico-minimapa` (séptimo bloque · v0.8.0)
 
 Este documento refleja el estado **real y verificado** del proyecto, no solo lo que existe en el código.
 La verificación se hizo compilando con Vite y ejecutando el juego en Chromium headless con WebGL
@@ -12,7 +12,9 @@ GPU real, así que el rendimiento final sigue pendiente de validación en dispos
 - Rama publicada: `mundo-abierto-trafico-minimapa`, con 15 commits sobre `main`.
 - **Pull Request abierto:** https://github.com/pruebadejoseholaaas-coder/operacion-caribedf/pull/1
   (pendiente de revisión del propietario; no se ha fusionado a `main`).
-- Último commit: `7e39e07` — interiores funcionales y vida cotidiana.
+- Último commit del bloque anterior: `ade6566` — publicación de la versión 0.7.0.
+- Cambios de este bloque: economía de comercios, clientes NPC, transporte público integrado,
+  LOD de habitantes, pruebas automáticas y CI. El commit de cierre se indica al final de este informe.
 - Se conservan los 8 parches y el bundle 0.4 de bloques anteriores. Para la entrega 0.5 se generaron
   `operacion-caribe-0.5.bundle` y 13 parches en `../operacion-caribe-entrega-0.5/`.
 
@@ -26,6 +28,61 @@ npm run dev            # servidor local
 
 En desarrollo se expone `window.__oc` (solo con `import.meta.env.DEV`) con escena, cámara,
 colisiones, mundo, tráfico, comercios, NPC y jugador. Sirve para pruebas automatizadas.
+
+## Séptimo bloque: economía, clientes, transporte y estabilización (v0.8.0)
+
+### Implementado
+
+- **`src/economy.js`**: preferencias de consumo, demanda por hora, posiciones de cola,
+  transformación al mundo, costo de venta y selección de producto con stock.
+- **Comercios**: los 40 comercios tienen cola única, stock, venta real, costo, reposición,
+  ventas de ciudadanos y persistencia. El panel F muestra cola, ventas de ciudadanos y caja.
+- **Clientes NPC**: los habitantes entran al comercio, esperan su turno, compran un producto,
+  reciben animación de compra y salen. No se usan visitantes decorativos para afirmar que hay IA.
+- **Transporte**: paradas con línea y próxima guagua; NPC esperan, abordan y vuelven a su rutina.
+  El jugador puede pulsar E en una parada y avanzar a la siguiente parada con fundido.
+- **Optimización**: actualización LOD de NPC por distancia, ocultado de NPC lejanos,
+  actualización de tráfico por distancia y visibilidad de interiores.
+- **Clima**: los NPC en ocio buscan refugio cuando llueve.
+- **Pruebas**: `tests/economy.test.mjs`, `tests/static.test.mjs`, script `npm test` y
+  `.github/workflows/pr-checks.yml` (build + tests en PR).
+
+### Error crítico encontrado y corregido
+
+`shopRecord()` comprobaba la clave del comercio sin el prefijo `shop-`, pero guardaba con
+prefijo. Cada llamada creaba un registro nuevo y reiniciaba `actualStaff`; varios comercios
+mostraban 0 o 1 empleado aunque tuvieran varios NPC dentro. Se corrigió la clave. También se
+separó la salida de clientes de la de empleados para no restar personal por error.
+
+### Verificación de este bloque
+
+- `npm run build`: correcto. Bundle principal 807.34 kB (gzip 230.18 kB).
+- `npm test`: 7/7 pruebas correctas.
+- Simulación de 3 horas en Chromium headless:
+  - 109 ventas atribuidas a ciudadanos,
+  - 7 comercios con ventas de ciudadanos,
+  - 0 rutas inseguras y 0 NPC bloqueados,
+  - clientes terminan su compra y salen.
+- Persistencia: stock, costo, ganancia, ventas de ciudadanos y empleados se conservan tras recargar.
+- Transporte: se observaron estados `toStop` y `ridingBus`; los NPC vuelven a su rutina.
+- Guagua del jugador: E en parada mueve al jugador a la parada siguiente y muestra la línea.
+- Móvil 390×844: interiores y entrada/salida sin errores de página.
+- Regresión: menú, misiones, trabajos, casa, clima, audio, minimapa e interiores sin errores
+  de consola en las pruebas ejecutadas.
+
+### Límites que no se ocultan
+
+- No se probó en un Android físico ni en una GPU real. La verificación es headless/SwiftShader.
+- Los vehículos no esquivan físicamente a los peatones; solo frenan entre vehículos y respetan luces.
+- El viaje del jugador en guagua es una transición a la parada siguiente, no una simulación de asiento.
+- Los habitantes de la zona residencial alejada no tienen comercios a menos de 150 m; por eso
+  compran sobre todo los trabajadores después del turno.
+- No todos los edificios tienen interior; están cubiertos viviendas NPC, hospital, escuela y comercios.
+
+### Próxima tarea exacta
+
+Probar el APK en un Android físico y medir FPS/memoria; después, añadir una parada o comercio
+en la zona residencial para que esos habitantes también compren antes del trabajo.
 
 ## Cuarto bloque: correcciones críticas y sistemas nuevos
 

@@ -2,7 +2,7 @@
 
 Juego 3D de mundo abierto, inspirado en los grandes atracos, ambientado en la República Dominicana. Se juega en el navegador y más adelante como APK de Android.
 
-> **Estado:** prototipo 0.7. Zona Colonial de Santo Domingo con calles reales (OpenStreetMap), 40 comercios explorables con clientes y reposición, habitantes con casa y trabajo asignados, **interiores funcionales de viviendas, hospital y escuela**, rutas por aceras, horarios individuales, estados de actividad y persistencia; tráfico con semáforos, pasajeros y faros; minimapa, clima dinámico, noche con farolas y ventanas iluminadas; audio procedural, casa propia, menú principal, ajustes gráficos, teléfono, inventario, encargos, trabajos por turnos, misión encadenada y reputación.
+> **Estado:** prototipo 0.8. Zona Colonial de Santo Domingo con calles reales (OpenStreetMap), 40 comercios explorables con **economía en RD$, stock, reposición, colas y ventas de ciudadanos**, habitantes con casa y trabajo asignados, **compras autónomas y transporte público**, **interiores funcionales de viviendas, hospital y escuela**, rutas por aceras, horarios individuales, estados de actividad y persistencia; tráfico con semáforos, pasajeros, rutas de guagua y faros; minimapa, clima dinámico, noche con farolas y ventanas iluminadas; audio procedural, casa propia, menú principal, ajustes gráficos, teléfono, inventario, encargos, trabajos por turnos, misión encadenada y reputación. Incluye pruebas automáticas y un flujo de CI para PR.
 >
 > El estado detallado y verificado de cada fase está en [`OPERACION_CARIBE_PROGRESS.md`](OPERACION_CARIBE_PROGRESS.md).
 
@@ -15,7 +15,7 @@ npm run dev
 
 Abre la dirección que muestre la terminal. Desde el celular, en la misma red Wi-Fi, usa la dirección de red que aparece.
 
-**Controles:** WASD o flechas para moverte, Shift para correr, arrastrar para girar la cámara, E para interactuar (moto, casa, viviendas de NPC, hospital, escuela, cama, nevera, cocina, cancha, misión...), F para entrar a un comercio, M para abrir el mapa, I para la mochila, P para el teléfono, T para saludar, Q para usar la habilidad del rol, Esc para el menú. En móvil: joystick y botones en pantalla; toca el minimapa para abrir el mapa.
+**Controles:** WASD o flechas para moverte, Shift para correr, arrastrar para girar la cámara, E para interactuar (moto, casa, viviendas de NPC, hospital, escuela, cama, nevera, cocina, cancha, misión, parada de guagua...), F para entrar a un comercio, M para abrir el mapa, I para la mochila, P para el teléfono, T para saludar, Q para usar la habilidad del rol, Esc para el menú. En móvil: joystick y botones en pantalla; toca el minimapa para abrir el mapa.
 
 ## Publicar en la web (GitHub Pages)
 
@@ -33,6 +33,9 @@ Abre la dirección que muestre la terminal. Desde el celular, en la misma red Wi
 - [x] Interiores de comercios con clientes que entran, compran y salen
 - [x] Habitantes autónomos: casa y trabajo asignados, rutas por aceras, horarios, estados y persistencia
 - [x] Interiores de viviendas de NPC, hospital y escuela; puestos de trabajo dentro de comercios
+- [x] Economía de comercios en RD$: stock, reposición, colas, ventas de ciudadanos y persistencia
+- [x] Habitantes que compran y usan guaguas; rutas de transporte, paradas y viaje simple del jugador
+- [x] Optimización de NPC por distancia (LOD), pruebas unitarias y workflow de CI para PR
 - [x] Animaciones de caminar, entrar, sentarse, comer, trabajar, atender y dormir
 - [x] Misión encadenada «El recado de Doña Rosa»
 - [x] Audio procedural, noche, lluvia, nubes, viento y radio

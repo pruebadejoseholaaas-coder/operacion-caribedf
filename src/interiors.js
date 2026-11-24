@@ -204,13 +204,14 @@ export function createInteriorSystem({ T, scene, colliders, shops, npcs = [], ho
   }
   function shopRecord(shop) {
     if (!shop) return null;
-    if (shopData.has(shop.data.id)) return shopData.get(shop.data.id);
+    const key = 'shop-' + shop.data.id;
+    if (shopData.has(key)) return shopData.get(key);
     const r = shop.g.rotation.y, c = Math.cos(r), s = Math.sin(r);
     const toWorld = (lx, lz) => ({ x: shop.g.position.x + lx * c + lz * s, z: shop.g.position.z - lx * s + lz * c });
     const door = toWorld(0, 3.3), aisle = toWorld(0, 2.1), sideL = toWorld(-1.8, 1.0), sideR = toWorld(1.8, 1.0);
     const rec = { id: 'shop-' + shop.data.id, kind: 'shop', shop, name: shop.data.name, door, center: toWorld(0, 0), lim: null, points: { door, aisle, sideL, sideR }, paths: {}, actualStaff: 0 };
     shop.actualStaff = 0;
-    shopData.set(rec.id, rec);
+    shopData.set(key, rec);
     return rec;
   }
   function shopPath(rec, task) {
@@ -309,11 +310,29 @@ export function createInteriorSystem({ T, scene, colliders, shops, npcs = [], ho
     }
     return false;
   }
+  function enterNpcCustomer(n, shop, spot) {
+    const c = n.citizen, rec = shopRecord(shop);
+    if (!c || !rec || !spot) return false;
+    c.inside = rec.id; c.insideKind = 'shopCustomer'; c.insideTarget = 'queue';
+    c.insidePath = [rec.door, rec.points.aisle, { x: spot.x, z: spot.z }].map(q => ({ x: q.x, z: q.z }));
+    c.insideIndex = 0; c.action = 'enter'; c.task = 'buy';
+    n.g.position.set(rec.door.x, 0, rec.door.z);
+    n.g.rotation.x = 0; n.g.position.y = 0; n.g.visible = true;
+    return true;
+  }
+  function leaveNpcCustomer(n) {
+    const c = n.citizen;
+    if (!c?.inside) return false;
+    const rec = shopData.get(c.inside);
+    if (!rec) return false;
+    c.insideTarget = 'exit'; c.insidePath = [rec.points.aisle, rec.door].map(q => ({ x: q.x, z: q.z })); c.insideIndex = 0; c.action = 'walk';
+    return true;
+  }
   function exitNpc(n) {
     const c = n.citizen;
     if (!c?.inside) return false;
     const rec = homesById.get(c.inside) || institutionsById.get(c.inside) || shopData.get(c.inside);
-    if (rec?.kind === 'shop') { rec.actualStaff = Math.max(0, (rec.actualStaff || 0) - 1); rec.shop.actualStaff = rec.actualStaff; }
+    if (rec?.kind === 'shop' && c.insideKind === 'shop') { rec.actualStaff = Math.max(0, (rec.actualStaff || 0) - 1); rec.shop.actualStaff = rec.actualStaff; }
     const door = rec?.door || n.home || n.work;
     if (door) n.g.position.set(door.x, 0, door.z);
     n.g.position.y = 0; n.g.rotation.x = 0; n.g.visible = true;
@@ -348,7 +367,7 @@ export function createInteriorSystem({ T, scene, colliders, shops, npcs = [], ho
   function restoreNpc(n) {
     const c = n.citizen;
     if (!c?.inside) return;
-    if (c.inside.startsWith('shop-')) {
+    if (c.inside.startsWith('shop-') && c.insideKind === 'shop') {
       const shop = shops.find(s => 'shop-' + s.data.id === c.inside);
       const rec = shop ? shopRecord(shop) : shopData.get(c.inside);
       if (rec) { rec.actualStaff = (rec.actualStaff || 0) + 1; rec.shop.actualStaff = rec.actualStaff; }
@@ -391,7 +410,7 @@ export function createInteriorSystem({ T, scene, colliders, shops, npcs = [], ho
   return {
     homesById, institutionsById, shopData,
     enterPlayer, exitPlayer, playerInside, nearExit, nearDoor,
-    enterNpcHome, enterNpcWork, exitNpc, moveNpc, npcVisible, restoreNpc,
+    enterNpcHome, enterNpcWork, enterNpcCustomer, leaveNpcCustomer, exitNpc, moveNpc, npcVisible, restoreNpc,
     workFor, homeDoor, shopTask, shopStation, shopRecord, debug
   };
 }

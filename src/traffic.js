@@ -283,7 +283,7 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
       p.visible = i < 2; scene.add(p);
       pax.push({ g: p, home: [hx, hz], state: i < 2 ? 'wait' : 'away', timer: 0, from: null, to: null, t: 0, arrival: i === 2 });
     }
-    stops.push({ x: sx, z: sz, g, node: n.k, pax, busy: null, ox, oz });
+    stops.push({ x: sx, z: sz, g, node: n.k, pax, busy: null, ox, oz, line: 'Ruta Colonial ' + (stops.length % 3 + 1), nextBus: 15 + Math.random() * 35 });
   }
 
   // Semáforos: se construyen solo cerca del jugador para no cargar la escena.
@@ -463,6 +463,8 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
 
     // Pasajeros: esperan en la parada, suben al autobús y otro baja.
     for (const s of stops) {
+      s.nextBus = Math.max(0, (s.nextBus || 0) - dt);
+      if (s.busy) s.nextBus = 35 + Math.random() * 25;
       const near = Math.hypot(s.x - px, s.z - pz) < 145;
       s.g.visible = near;
       if (s.busy) {
@@ -537,7 +539,7 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
   }
 
   return {
-    update, collide, setNight, vehicles, stops, graph,
-    stats: () => ({ vehicles: vehicles.length, parked: parked.length, nodes: graph.nodes.size, lights: graph.lights.length, stops: stops.length, passengers: stops.reduce((n, s) => n + s.pax.filter(p => p.state === 'wait').length, 0) })
+    update, collide, setNight, vehicles, stops, graph, nearStop: (pos, radius = 3.4) => stops.find(s => Math.hypot(pos.x - s.x, pos.z - s.z) < radius) || null,
+    stats: () => ({ vehicles: vehicles.length, parked: parked.length, nodes: graph.nodes.size, lights: graph.lights.length, stops: stops.length, lines: [...new Set(stops.map(s => s.line))].length, passengers: stops.reduce((n, s) => n + s.pax.filter(p => p.state === 'wait').length, 0) })
   };
 }

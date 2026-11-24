@@ -393,6 +393,16 @@ function exitInterior(){
  minimap?.setVisible(true);
  ui?.toast('Has salido a la calle');
 }
+function rideBus(stop){
+ const stops=trafficSystem?.stops||[];
+ if(!stop||stops.length<2)return;
+ const next=stops[(stops.indexOf(stop)+1)%stops.length];
+ ui?.fade(()=>{
+  player.g.position.set(next.x+(next.ox||0)*1.2,0,next.z+(next.oz||0)*1.2);
+  vx=vz=spd=0;saveGame();
+  ui?.toast('Guagua · '+stop.line+' · llegaste a la parada siguiente',3600);
+ });
+}
 function enterHouse(){
  if(!house)return;
  if(house.enter(player)){
@@ -458,6 +468,8 @@ function interact(){
  const interiorDoor=interiors?.nearDoor(player.g.position);
  if(interiorDoor){enterInterior(interiorDoor);return}
  if(house?.nearDoor(player.g.position)){enterHouse();return}
+ const busStop=trafficSystem?.nearStop(player.g.position);
+ if(busStop){rideBus(busStop);return}
  toggle();
 }
 let world=null,wt=0,audioClock=0,fpsSmooth=60,fpsClock=0,court=null,courtT=0,interiors=null;
@@ -489,7 +501,7 @@ loadWorld(T,scene,colliders).then(w=>{if(!w)return;world=w;
  }
  trafficSystem=createTrafficSystem(T,scene,colliders,w,{mobile:mobileDevice});
  if(trafficSystem?.graph){
-  citizens=createCitizenSystem({npcs,graph:trafficSystem.graph,shops:businessSystem.shops,buildings:w.buildings,spawn:{x:w.spawn[0],z:w.spawn[1]},swing});
+  citizens=createCitizenSystem({npcs,graph:trafficSystem.graph,shops:businessSystem.shops,businesses:businessSystem,traffic:trafficSystem,buildings:w.buildings,spawn:{x:w.spawn[0],z:w.spawn[1]},swing});
   interiors=createInteriorSystem({T,scene,colliders,shops:businessSystem.shops,npcs,homes:citizens.homeDoors(),institutions:institutionDefs});
   citizens.attachInteriors(interiors);
   citizens.initialize(worldClock);
@@ -575,8 +587,9 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
   player.g.position.set(moto.position.x,.3,moto.position.z);player.g.rotation.y=rot;player.g.rotation.z=moto.rotation.z;
   player.legL.rotation.x=player.legR.rotation.x=-1.2;player.armL.rotation.x=player.armR.rotation.x=-1.1}
  else{player.g.rotation.y=rot;player.g.rotation.z=0;swing(player,Math.sin(t*(sp>6?13:9))*Math.min(1,sp/5)*.9)}
+ citizens?.setWeather(weatherIndex);
+ citizens?.updateAll(dt,worldClock,t,player.g.position);
  npcs.forEach(n=>{
-  if(citizens)citizens.updateNpc(n,dt,worldClock,t);
   if(!n.g.visible)return;
   if(n.greetingReact>0){n.greetingReact=Math.max(0,n.greetingReact-dt);const wave=Math.sin((1.35-n.greetingReact)*13)*.22;n.armR.rotation.z=-(n.greetingLevel>=3?1.05:.72)+wave;n.armR.rotation.x=-.35;n.armL.rotation.z=(n.greetingLevel>=3?.48:.18)+wave*.55}else{n.armR.rotation.z=0;n.armL.rotation.z=0}
   if(n.pause>0&&n.activity==='phone'&&n.greetingReact<=0)n.armR.rotation.x=-1.35;
@@ -617,7 +630,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
  else if(inShop){hemi.intensity*=.5;sun.intensity*=.28;}
  let msg=riding?'E para bajar · '+Math.round(Math.abs(spd)*3.6)+' km/h':(near()?'E para subir al motoconcho':'');
  if(house?.inside()){const a=house.actionAt(pp);msg=a?'E: '+a.label:'E para interactuar'}
- else {const jh=jobs?.hint();if(jh)msg=jh;else if(house?.nearDoor(pp))msg='E para entrar en tu casa'}
+ else {const jh=jobs?.hint();if(jh)msg=jh;else if(house?.nearDoor(pp))msg='E para entrar en tu casa';else {const st=trafficSystem?.nearStop(pp);if(st)msg='E: tomar '+st.line}}
  roleTick(dt);
  const missionDistance=Math.hypot(pp.x-GOAL.x,pp.z-GOAL.z);
  const jm=jobs?.missionText();

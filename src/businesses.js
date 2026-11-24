@@ -1,4 +1,5 @@
-// Primera fase de la economía urbana dominicana: 10 comercios con interiores y actividad.
+// Economía urbana dominicana: 40 comercios con interiores, clientes y personal real.
+import { shopPreference, demandAt, queueWorld, saleCost, productIndexFor } from './economy.js';
 const CATALOG = [
  {id:'colmado',name:'Colmado El Buen Vecino',kind:'COLMADO',open:6,close:23,wall:0x78b982,trim:0x176b43,task:'organiza productos',products:[['Arroz (libra)',35,0xe8dfc8],['Habichuelas',65,0x8b4a2d],['Aceite',95,0xe4b93c],['Jugo',45,0xe76f51]],detail:'Colmado de barrio con estantes surtidos, neveras, botellones de agua, sacos y sillas plásticas'},
  {id:'ventorrillo',name:'Ventorrillo Doña Nena',kind:'VENTORRILLO',open:6,close:21,wall:0xf0c9a0,trim:0x2a9d8f,task:'atiende el mostrador',products:[['Plátanos',20,0x8da83c],['Huevos',12,0xf0e5ca],['Leche',75,0xf1f1e9],['Galletas',25,0xc99b62]],detail:'Mostrador frontal, zinc, cajas y mercancía básica'},
@@ -148,7 +149,7 @@ export function createBusinessSystem(T, scene, colliders, world, avoid = []) {
  let active=null,insideShop=null;
  let economy={cash:2500,inventory:{}},savedShops=null;
  try{const old=JSON.parse(localStorage.getItem('operacion-caribe-economy-v1')||'null');if(old&&Number.isFinite(old.cash)){economy={cash:old.cash,inventory:old.inventory||{}};savedShops=old.shops||null}}catch{}
- const save=()=>{try{const data={...economy,shops:Object.fromEntries(shops.map(s=>[s.data.id,{stock:s.stock,sales:s.sales,visits:s.visits,revenue:s.revenue}]))};localStorage.setItem('operacion-caribe-economy-v1',JSON.stringify(data))}catch{}};
+ const save=()=>{try{const data={...economy,shops:Object.fromEntries(shops.map(s=>[s.data.id,{stock:s.stock,sales:s.sales,visits:s.visits,revenue:s.revenue,costs:s.costs,profit:s.profit,citizenSales:s.citizenSales}]))};localStorage.setItem('operacion-caribe-economy-v1',JSON.stringify(data))}catch{}};
  const money=n=>'RD$ '+Math.round(n).toLocaleString('es-DO');
  const shopLight=new T.PointLight(0xffe0a8,0,15,2);scene.add(shopLight);
  // Acabado interior compartido para que los comercios se distingan también por dentro.
@@ -745,12 +746,39 @@ export function createBusinessSystem(T, scene, colliders, world, avoid = []) {
   const hours={open:data.open,close:data.close};
   const register=cube(g,.55,.3,.38,0x252b2e,.55,1.33,.75);
   cube(g,.42,.15,.02,0x8ff0c2,.55,1.38,.56);
-  return{data,g,worker,visitors,phase:index*.8,visitorT:2+Math.random()*10,open:true,hours,stock:data.products.map(p=>12),sales:0,visits:0,revenue:0,register,registerPulse:0,restockT:28+Math.random()*35};
+  return{data,g,worker,visitors,phase:index*.8,visitorT:2+Math.random()*10,open:true,hours,stock:data.products.map(p=>12),sales:0,visits:0,revenue:0,costs:0,profit:0,citizenSales:0,preference:shopPreference(data),queue:[],actualStaff:0,register,registerPulse:0,restockT:28+Math.random()*35};
  }
  const sites=placeShops(world,CATALOG.length,avoid);
  CATALOG.forEach((d,i)=>shops.push(build(d,sites[i]||sites[sites.length-1],i)));
- if(savedShops)for(const s of shops){const st=savedShops[s.data.id];if(!st)continue;if(Array.isArray(st.stock))s.stock=st.stock.map(v=>Math.max(0,v|0)).slice(0,s.data.products.length);s.sales=Math.max(0,st.sales|0);s.visits=Math.max(0,st.visits|0);s.revenue=Math.max(0,Number(st.revenue)||0)}
- function setPanel(shop){active=shop;if(!panel)return;title.textContent=shop.data.name;info.textContent=shop.open?shop.data.detail+' · Abierto · '+money(economy.cash):'Este negocio está cerrado ahora.';products.replaceChildren();shop.data.products.forEach((p,i)=>{const b=document.createElement('button');b.className='business-buy';b.textContent=p[0]+' · '+money(p[1])+' · '+shop.stock[i]+' disp.';b.disabled=!shop.open||shop.stock[i]<=0||economy.cash<p[1];b.addEventListener('click',()=>{if(!active||!active.open||active.stock[i]<=0||economy.cash<p[1])return;economy.cash-=p[1];active.stock[i]--;economy.inventory[p[0]]=(economy.inventory[p[0]]||0)+1;active.sales++;active.revenue+=p[1];active.registerPulse=1;save();setPanel(active)});products.appendChild(b)});panel.style.display='flex'}
+ if(savedShops)for(const s of shops){const st=savedShops[s.data.id];if(!st)continue;if(Array.isArray(st.stock))s.stock=st.stock.map(v=>Math.max(0,v|0)).slice(0,s.data.products.length);s.sales=Math.max(0,st.sales|0);s.visits=Math.max(0,st.visits|0);s.revenue=Math.max(0,Number(st.revenue)||0);s.costs=Math.max(0,Number(st.costs)||0);s.profit=Math.max(0,Number(st.profit)||0);s.citizenSales=Math.max(0,st.citizenSales|0)}
+ function recordSale(shop,index,buyer='visitor'){
+  if(!shop||!shop.data.products[index]||shop.stock[index]<=0)return null;
+  const product=shop.data.products[index];
+  shop.stock[index]--;
+  shop.sales++;shop.visits++;shop.revenue+=product[1];shop.costs+=saleCost(product[1]);shop.profit=shop.revenue-shop.costs;shop.registerPulse=1;shop.lastBuyer=buyer;if(buyer==='citizen')shop.citizenSales=(shop.citizenSales||0)+1;
+  save();return {name:product[0],price:product[1],index};
+ }
+ function joinQueue(shop,npc){
+  if(!shop||!shop.open||!npc)return null;
+  if(shop.queue.some(q=>q.npc===npc)){const q=shop.queue.find(q=>q.npc===npc);return {index:shop.queue.indexOf(q),spot:queueWorld(shop,shop.queue.indexOf(q))}}
+  if(shop.queue.length>=6)return null;
+  const index=shop.queue.length;shop.queue.push({npc,index,t:0});
+  return {index,spot:queueWorld(shop,index)};
+ }
+ function leaveQueue(shop,npc){if(!shop)return;const i=shop.queue.findIndex(q=>q.npc===npc);if(i>=0)shop.queue.splice(i,1)}
+ function queueIndex(shop,npc){return shop?shop.queue.findIndex(q=>q.npc===npc):-1}
+ function isFirst(shop,npc){return !!shop&&shop.queue[0]?.npc===npc}
+ function serveCustomer(shop,npc){
+  if(!shop||!shop.open||!isFirst(shop,npc)||!shop.actualStaff)return null;
+  const index=productIndexFor(shop.stock,npc.preference);
+  if(index<0)return null;
+  return recordSale(shop,index,'citizen');
+ }
+ function shopById(id){return shops.find(s=>s.data.id===id)||null}
+ function availableFor(preference){
+  return shops.filter(s=>s.open&&s.actualStaff>0&&s.preference===preference&&s.stock.some(v=>v>0));
+ }
+ function setPanel(shop){active=shop;if(!panel)return;title.textContent=shop.data.name;info.textContent=shop.open?shop.data.detail+' · Abierto · '+money(economy.cash):'Este negocio está cerrado ahora.';products.replaceChildren();shop.data.products.forEach((p,i)=>{const b=document.createElement('button');b.className='business-buy';b.textContent=p[0]+' · '+money(p[1])+' · '+shop.stock[i]+' disp.';b.disabled=!shop.open||shop.stock[i]<=0||economy.cash<p[1];b.addEventListener('click',()=>{if(!active||!active.open||active.stock[i]<=0||economy.cash<p[1])return;economy.cash-=p[1];recordSale(active,i,'player');economy.inventory[p[0]]=(economy.inventory[p[0]]||0)+1;save();setPanel(active)});products.appendChild(b)});panel.style.display='flex'}
  function closePanel(){active=null;if(panel)panel.style.display='none'}
  close?.addEventListener('click',closePanel);
  function interact(pos){let nearest=null,best=9;for(const s of shops){const d=Math.hypot(pos.x-s.g.position.x,pos.z-s.g.position.z);if(d<best){best=d;nearest=s}}if(nearest){setPanel(nearest);return true}return false}
@@ -758,24 +786,25 @@ export function createBusinessSystem(T, scene, colliders, world, avoid = []) {
   insideShop=null;
   const hour=Math.floor(clock/3600),minute=Math.floor(clock%3600/60),time=hour+minute/60;
   let nearbyShop=null,nearDistance=9;
-  const demand=time>=7&&time<10?.7:time>=12&&time<15?.75:time>=17&&time<21?.85:1.5;
+  const demand=demandAt(time);
   for(const s of shops){const {data}=s;const distance=Math.hypot(pos.x-s.g.position.x,pos.z-s.g.position.z);if(distance<nearDistance){nearDistance=distance;nearbyShop=s}s.open=data.close<data.open?(time>=data.open||time<data.close):(time>=data.open&&time<data.close);s.phase+=dt;
    s.restockT-=dt;
-   if(s.restockT<=0){s.restockT=50+Math.random()*45;let restocked=false;for(let i=0;i<s.stock.length;i++)if(s.stock[i]<12){s.stock[i]++;restocked=true}if(restocked)save()}
+   if(s.restockT<=0){s.restockT=50+Math.random()*45;let restocked=false;for(let i=0;i<s.stock.length;i++)if(s.stock[i]<12){s.stock[i]++;s.costs+=Math.round(s.data.products[i][1]*.18);restocked=true}if(restocked){s.profit=s.revenue-s.costs;save()}}
    if(s.registerPulse>0){s.registerPulse=Math.max(0,s.registerPulse-dt*2);s.register.scale.setScalar(1+s.registerPulse*.22)}
    s.g.visible=distance<260;s.worker.g.visible=s.open&&distance<85&&!s.actualStaff;
    const stations=[[-2.4,-.65],[0,-.65],[2.3,-.65]],target=stations[Math.floor(s.phase/5)%stations.length];s.worker.g.position.x+=(target[0]-s.worker.g.position.x)*(1-Math.exp(-dt*1.7));s.worker.g.position.z+=(target[1]-s.worker.g.position.z)*(1-Math.exp(-dt*1.7));s.worker.a.rotation.x=Math.sin(s.phase*3)*.55;s.worker.b.rotation.x=-Math.sin(s.phase*3)*.55;
    // Clientes: entran desde la acera, compran en el mostrador y salen.
    if(distance<120){
     s.visitorT-=dt;
-    if(s.open&&s.visitorT<=0&&s.visitors.some(v=>v.state==='idle')){
+    if(s.open&&!s.actualStaff&&!s.queue.length&&s.visitorT<=0&&s.visitors.some(v=>v.state==='idle')){
      const v=s.visitors.find(v=>v.state==='idle');
      v.state='entering';v.sx=(Math.random()*2-1)*1.2;v.tx=(Math.random()*2-1)*1.0;v.tz=1.55;v.t=0;v.walk=0;
      v.g.position.set(v.sx,0,D/2+2.6);v.g.rotation.y=Math.PI;v.g.visible=true;
-     s.visitorT=(8+Math.random()*12)*demand;
+     s.visitorT=(8+Math.random()*12)*demandAt(time,s.preference);
     }
     for(const v of s.visitors){
      if(v.state==='idle'){v.g.visible=false;continue}
+     if(s.queue.length&&v.state==='entering'){v.state='leaving';}
      v.g.visible=true;
      const tx=v.state==='leaving'?v.sx:v.tx,tz=v.state==='leaving'?D/2+2.8:v.tz;
      const dx=tx-v.g.position.x,dz=tz-v.g.position.z,dist=Math.hypot(dx,dz);
@@ -783,8 +812,8 @@ export function createBusinessSystem(T, scene, colliders, world, avoid = []) {
       v.t-=dt;
       v.a.rotation.x=-.95+Math.sin(s.phase*8)*.15;v.b.rotation.x=-.35;
       if(v.t<=0){
-       const avail=[...s.stock.keys()].filter(i=>s.stock[i]>0);
-       if(avail.length){const i=avail[Math.floor(Math.random()*avail.length)];s.stock[i]--;s.sales++;s.visits++;s.revenue+=s.data.products[i][1];s.registerPulse=1;save()}
+       const i=productIndexFor(s.stock,'visitor');
+       if(i>=0)recordSale(s,i,'visitor');
        v.state='leaving';v.g.rotation.y=0;
       }
      } else if(dist>.08){
@@ -810,7 +839,7 @@ export function createBusinessSystem(T, scene, colliders, world, avoid = []) {
   }
   if(!insideShop)shopLight.intensity=0;
   if(hud){hud.textContent='Comercios: '+shops.filter(s=>s.open).length+'/'+shops.length+' abiertos · '+money(economy.cash)+(nearbyShop?' · F: '+nearbyShop.data.kind:'')}
-  if(active&&info){info.textContent=(active.open?'Abierto':'Cerrado')+' · '+active.data.detail+' · Empleado: '+active.data.task+' · Clientes: '+active.visits+' · Ventas: '+active.sales+' · Ingresos: '+money(active.revenue)+' · '+money(economy.cash);if(!active.open)products.querySelectorAll('button').forEach(b=>b.disabled=true)}
+  if(active&&info){info.textContent=(active.open?'Abierto':'Cerrado')+' · '+active.data.detail+' · Empleado: '+active.data.task+' · Clientes: '+active.visits+' · Ventas: '+active.sales+' · Ingresos: '+money(active.revenue)+' · Costos: '+money(active.costs)+' · Ganancia: '+money(active.profit)+' · Cola: '+active.queue.length+' · Ciudadanos: '+(active.citizenSales||0)+' · '+money(economy.cash);if(!active.open)products.querySelectorAll('button').forEach(b=>b.disabled=true)}
  }
  function addCash(n){economy.cash=Math.max(0,economy.cash+n);save()}
  function inventory(){return economy.inventory}
@@ -823,5 +852,5 @@ export function createBusinessSystem(T, scene, colliders, world, avoid = []) {
   const name=Object.keys(economy.inventory).find(n=>FOOD.test(n));
   if(!name)return null;consume(name);return name;
  }
- return{update,interact,close:closePanel,shops,getInventory:()=>economy.inventory,getCash:()=>economy.cash,addCash,consume,consumeFood,consumeItem,inventory,isFood:n=>FOOD.test(n),insideShop:()=>insideShop};
+ return{update,interact,close:closePanel,shops,shopById,joinQueue,leaveQueue,queueIndex,isFirst,serveCustomer,recordSale,availableFor,getInventory:()=>economy.inventory,getCash:()=>economy.cash,addCash,consume,consumeFood,consumeItem,inventory,isFood:n=>FOOD.test(n),insideShop:()=>insideShop};
 }
