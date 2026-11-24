@@ -69,6 +69,8 @@ separó la salida de clientes de la de empleados para no restar personal por err
 - Móvil 390×844: interiores y entrada/salida sin errores de página.
 - Regresión: menú, misiones, trabajos, casa, clima, audio, minimapa e interiores sin errores
   de consola en las pruebas ejecutadas.
+- GitHub Actions: workflow `PR checks` ejecutado sobre la rama; build y `npm test` en verde
+  (run 45303442454).
 
 ### Límites que no se ocultan
 
