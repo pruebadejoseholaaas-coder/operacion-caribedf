@@ -23,7 +23,7 @@ test('los sistemas de interiores, comercios y transporte exponen sus APIs', () =
 
 test('la documentación y la versión no contradicen el estado actual', () => {
   const pkg = JSON.parse(read('package.json'));
-  assert.equal(pkg.version, '0.8.0');
+  assert.equal(pkg.version, '0.9.0');
   assert.match(read('README.md'), /prototipo 0\.8/);
   assert.match(read('OPERACION_CARIBE_PROGRESS.md'), /Séptimo bloque/);
 });

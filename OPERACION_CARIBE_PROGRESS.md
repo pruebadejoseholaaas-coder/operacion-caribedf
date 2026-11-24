@@ -1,6 +1,6 @@
 # Operación Caribe — Informe de progreso
 
-Actualizado: 2026-11-22 · Rama: `mundo-abierto-trafico-minimapa` (séptimo bloque · v0.8.0)
+Actualizado: 2026-11-22 · Rama: `mundo-abierto-trafico-minimapa` (octavo bloque · v0.9.0 en desarrollo)
 
 Este documento refleja el estado **real y verificado** del proyecto, no solo lo que existe en el código.
 La verificación se hizo compilando con Vite y ejecutando el juego en Chromium headless con WebGL
@@ -57,7 +57,7 @@ separó la salida de clientes de la de empleados para no restar personal por err
 ### Verificación de este bloque
 
 - `npm run build`: correcto. Bundle principal 807.34 kB (gzip 230.18 kB).
-- `npm test`: 9/9 pruebas correctas (incluye simulación de NPC que compra y de NPC que aborda una guagua).
+- `npm test` en aquel cierre: 9/9 pruebas correctas. En 0.9.0 la suite tiene 16 pruebas.
 - Simulación de 3 horas en Chromium headless:
   - 109 ventas atribuidas a ciudadanos,
   - 7 comercios con ventas de ciudadanos,
@@ -75,22 +75,62 @@ separó la salida de clientes de la de empleados para no restar personal por err
 ### Límites que no se ocultan
 
 - No se probó en un Android físico ni en una GPU real. La verificación es headless/SwiftShader.
-- Los vehículos no esquivan físicamente a los peatones; solo frenan entre vehículos y respetan luces.
+- En 0.8.0 los vehículos solo frenaban entre sí y respetaban luces; en 0.9.0 además reducen
+  velocidad en cruces y ceden ante peatones (sin colisión física lateral).
 - El viaje del jugador en guagua es una transición a la parada siguiente, no una simulación de asiento.
-- Los habitantes de la zona residencial alejada no tienen comercios a menos de 150 m; por eso
-  compran sobre todo los trabajadores después del turno.
+- La nota anterior sobre la zona residencial era errónea: las 22 viviendas de rutina están a
+  menos de 150 m de un comercio; la compra antes del turno se verificó en simulación.
 - No todos los edificios tienen interior; están cubiertos viviendas NPC, hospital, escuela y comercios.
 
 ### Correcciones de la etapa 1 (v0.9.0 en desarrollo)
 - Se eliminó el parámetro `preference` sin uso de `productIndexFor()`.
 - Se añadió una guarda para que un NPC en ocio vuelva a su turno cuando llega la hora.
 - Se añadieron pruebas reproducibles de simulación de NPC, compra, cola y transporte.
-- `AUDITORIA_OPERACION_CARIBE.md` quedó como redirección histórica; la fuente vigente es `AUDITORIA.md`.
+- `AUDITORIA_OPERACION_CARIBE.md` se actualizó con el estado real y ya no es solo una redirección.
 
-### Próxima tarea exacta
+### Octavo bloque: transporte con rutas, seguridad vial y vida cotidiana (v0.9.0)
 
-Probar el APK en un Android físico y medir FPS/memoria; después, añadir una parada o comercio
-en la zona residencial para que esos habitantes también compren antes del trabajo.
+#### Implementado
+
+- **`src/transit.js`**: nombres, colores y frecuencias de tres líneas; utilidades puras de
+  paradas, destinos y primera arista del grafo hacia una parada.
+- **Transporte con rutas propias**: cada guagua sigue las paradas de su línea mediante BFS;
+  se refuerza la flota para garantizar al menos una guagua por línea. Los pasajeros reciben
+  destino y bajan en su parada; el jugador avanza a la siguiente parada de la misma línea.
+- **`src/trafficRules.js`**: reglas puras de peatón delante y distancia de frenado.
+- **Seguridad vial**: reducción de velocidad en cruces, cesión ante peatones y recuperación
+  de vehículos detenidos demasiado tiempo. Se mantiene la separación y el respeto a luces.
+- **`src/barrio.js`**: Plaza Los Almendros con suelo, bancos, árboles, farolas y letrero.
+- **Comercio cotidiano**: los comercios abiertos pueden atender aunque el empleado NPC todavía
+  no haya llegado; los habitantes usan su dirección lógica para elegir comercio cercano
+  cuando están dentro de su vivienda. Se corrigió la prioridad de oficio→comercio.
+- **Viviendas y rutinas**: se mantienen los 22 hogares urbanos, dormir, compras, transporte
+  y regreso al hogar; no se borraron sistemas existentes.
+
+#### Pruebas y verificación
+
+- `npm test`: **16/16 correctas**.
+- `npm run build`: correcto (~814.24 kB JS, gzip ~232.66 kB).
+- Chromium headless/SwiftShader:
+  - viaje del jugador a la siguiente parada de la misma línea, con aviso correcto;
+  - líneas y paradas con destino, al menos una guagua por línea;
+  - peatón delante: velocidad baja y contador de cesiones sube;
+  - simulación de compras antes del turno: 12 ventas en 2 comercios, 0 rutas inseguras;
+  - 22/22 hogares de rutina a menos de 150 m de un comercio (la nota anterior era errónea).
+- Sin errores de página en las pruebas ejecutadas.
+
+#### Límites de este bloque
+
+- La bajada de pasajeros está implementada, pero falta la verificación visual de un viaje
+  completo de punta a punta en una sesión larga.
+- La plaza no está conectada aún a las rutinas de los NPC; es espacio del jugador.
+- No hay colisión física vehículo-peatón; solo frenado y cesión.
+- Sin prueba en Android físico/GPU real.
+
+#### Próxima tarea exacta
+
+Conectar la plaza con las rutinas de habitantes o reubicarla en una zona con viviendas de rutina;
+después probar el APK en Android físico y medir FPS/memoria.
 
 ## Cuarto bloque: correcciones críticas y sistemas nuevos
 

@@ -769,14 +769,14 @@ export function createBusinessSystem(T, scene, colliders, world, avoid = []) {
  function queueIndex(shop,npc){return shop?shop.queue.findIndex(q=>q.npc===npc):-1}
  function isFirst(shop,npc){return !!shop&&shop.queue[0]?.npc===npc}
  function serveCustomer(shop,npc){
-  if(!shop||!shop.open||!isFirst(shop,npc)||!shop.actualStaff)return null;
+  if(!shop||!shop.open||!isFirst(shop,npc))return null;
   const index=productIndexFor(shop.stock);
   if(index<0)return null;
   return recordSale(shop,index,'citizen');
  }
  function shopById(id){return shops.find(s=>s.data.id===id)||null}
  function availableFor(preference){
-  return shops.filter(s=>s.open&&s.actualStaff>0&&s.preference===preference&&s.stock.some(v=>v>0));
+  return shops.filter(s=>s.open&&s.preference===preference&&s.stock.some(v=>v>0));
  }
  function setPanel(shop){active=shop;if(!panel)return;title.textContent=shop.data.name;info.textContent=shop.open?shop.data.detail+' · Abierto · '+money(economy.cash):'Este negocio está cerrado ahora.';products.replaceChildren();shop.data.products.forEach((p,i)=>{const b=document.createElement('button');b.className='business-buy';b.textContent=p[0]+' · '+money(p[1])+' · '+shop.stock[i]+' disp.';b.disabled=!shop.open||shop.stock[i]<=0||economy.cash<p[1];b.addEventListener('click',()=>{if(!active||!active.open||active.stock[i]<=0||economy.cash<p[1])return;economy.cash-=p[1];recordSale(active,i,'player');economy.inventory[p[0]]=(economy.inventory[p[0]]||0)+1;save();setPanel(active)});products.appendChild(b)});panel.style.display='flex'}
  function closePanel(){active=null;if(panel)panel.style.display='none'}

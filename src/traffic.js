@@ -1,5 +1,7 @@
 // Tráfico urbano real: grafo de calles con intersecciones, semáforos, carriles,
 // separación entre vehículos, estacionados y reciclaje de vehículos lejanos.
+import { LINE_FREQUENCIES, LINE_NAMES, buildLines, firstEdgeToward, lineIndexFor, pickDestination } from './transit.js';
+import { pedestrianAhead, pedestrianTarget } from './trafficRules.js';
 const CATALOG = [
  ['Sedán compacto','car',3.5,1.72,.62,3.8],['Sedán familiar','car',4.2,1.8,.7,3.9],['Hatchback urbano','car',3.25,1.68,.66,4.1],['Coupé deportivo','car',3.9,1.82,.62,5.1],['Deportivo bajo','car',4.1,1.9,.58,5.5],
  ['Jeepeta pequeña','suv',3.9,1.85,.85,4.0],['Jeepeta mediana','suv',4.35,1.92,.92,3.8],['Jeepeta grande','suv',4.8,2.02,1.0,3.6],['Jeepeta de lujo','suv',4.65,2.0,.94,4.0],['Todoterreno cuadrado','suv',4.2,1.95,1.05,3.4],
@@ -219,10 +221,10 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
   const PARKED = mobile ? 10 : 22;
   const parked = [];
 
-  function spawnVehicle(px, pz, edge) {
+  function spawnVehicle(px, pz, edge, modelOverride = null) {
     const e = edge || randomEdgeNear(px, pz);
     if (!e) return null;
-    const model = randModel();
+    const model = modelOverride || randModel();
     const g = makeVehicle(model, model.kind === 'moto');
     scene.add(g);
     return {
@@ -283,7 +285,36 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
       p.visible = i < 2; scene.add(p);
       pax.push({ g: p, home: [hx, hz], state: i < 2 ? 'wait' : 'away', timer: 0, from: null, to: null, t: 0, arrival: i === 2 });
     }
-    stops.push({ x: sx, z: sz, g, node: n.k, pax, busy: null, ox, oz, line: 'Ruta Colonial ' + (stops.length % 3 + 1), nextBus: 15 + Math.random() * 35 });
+    const lineId = lineIndexFor(stops.length);
+    stops.push({ x: sx, z: sz, g, node: n.k, pax, busy: null, ox, oz, lineId, line: LINE_NAMES[lineId], name: 'Parada ' + (stops.length + 1), frequency: LINE_FREQUENCIES[lineId], nextBus: 12 + Math.random() * 25 });
+  }
+
+  const lines = buildLines(stops);
+  for (const line of lines) for (const stop of line.stops) for (const p of stop.pax) {
+    p.destination = pickDestination(line.stops, stop);
+    p.destNode = p.destination?.node || null;
+    p.destName = p.destination?.name || null;
+  }
+
+  function assignBusRoute(v) {
+    if (!lines.length || !['bus', 'guagua', 'publico'].includes(v.model.kind)) {
+      v.lineId = null; v.line = null; v.routeIndex = 0; v.riders = []; return;
+    }
+    v.lineId = Math.floor(Math.random() * lines.length);
+    v.routeIndex = Math.floor(Math.random() * lines[v.lineId].stops.length);
+    v.line = lines[v.lineId].name;
+    v.riders = [];
+  }
+  for (const v of vehicles) assignBusRoute(v);
+  // Garantizar al menos una guagua por línea aunque el sorteo inicial no saque buses.
+  for (const line of lines) {
+    if (vehicles.some(v => v.lineId === line.id)) continue;
+    const busModel = CATALOG.find(m => ['bus', 'guagua', 'publico'].includes(m.kind));
+    const firstNode = graph.nodes.get(line.stops[0].node);
+    const v = spawnVehicle(world.spawn[0], world.spawn[1], firstNode?.edges[0] || null, busModel);
+    if (!v) continue;
+    v.lineId = line.id; v.line = line.name; v.routeIndex = 0; v.riders = [];
+    vehicles.push(v);
   }
 
   // Semáforos: se construyen solo cerca del jugador para no cargar la escena.
@@ -344,10 +375,17 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
     scene.add(v.g);
     v.edge = { ...e }; v.t = Math.random() * .8; v.speed = v.model.speed * .4;
     v.lane = Math.max(1, Math.min(2.1, e.width * .22));
-    v.wait = 0; v.lastStop = null; v.g.visible = true;
+    v.wait = 0; v.lastStop = null; v.g.visible = true; v.riders = []; assignBusRoute(v);
   }
 
   function chooseNext(v, node) {
+    if (v.lineId != null && lines[v.lineId]) {
+      const line = lines[v.lineId];
+      if (line.stops[v.routeIndex]?.node === node.k) v.routeIndex = (v.routeIndex + 1) % line.stops.length;
+      const target = line.stops[v.routeIndex] || line.stops[0];
+      const routeEdge = target && firstEdgeToward(graph, node, graph.nodes.get(target.node));
+      if (routeEdge) return routeEdge;
+    }
     const options = node.edges.filter(e => e.b !== v.edge.a);
     if (!options.length) return node.edges[0];
     let total = 0;
@@ -361,7 +399,8 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
     return options[options.length - 1];
   }
 
-  function update(dt, player, yaw) {
+  let pedestrianYields = 0;
+  function update(dt, player, yaw, pedestrians = []) {
     clock += dt;
     const px = player.x, pz = player.z;
 
@@ -405,6 +444,18 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
         const axis = Math.abs(e.dx) > Math.abs(e.dz) ? 'x' : 'z';
         if (lightState(toNode, axis, clock) === 'red' && remaining > 4.5) target = Math.min(target, Math.max(0, (remaining - 5) * .9));
       }
+      // Reducir velocidad al acercarse a un cruce, incluso con luz verde.
+      if (toNode && toNode.degree >= 3 && remaining < 14) target = Math.min(target, v.model.speed * .55);
+
+      // Ceder el paso a peatones que están delante, dentro del ancho de la vía.
+      let yieldPed = false;
+      const ped = pedestrianAhead(v.x, v.z, e.dx, e.dz, pedestrians);
+      if (ped) {
+        target = Math.min(target, pedestrianTarget(ped.forward));
+        yieldPed = true;
+      }
+      if (yieldPed && !v.yielding) { pedestrianYields++; v.yielding = true; }
+      else if (!yieldPed) v.yielding = false;
 
       // Frenar por el jugador si está delante en la vía.
       const pdx = px - v.x, pdz = pz - v.z, pdist = Math.hypot(pdx, pdz);
@@ -425,9 +476,15 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
         target = Math.min(target, ahead.speed * .92, Math.max(0, gap * 1.15));
       }
 
-      // Autobuses y guaguas se detienen en las paradas cercanas.
+      // Evitar que un vehículo quede detenido para siempre en un cruce o una parada.
+      if (!yieldPed && v.speed < .06 && target < .06) {
+        v.blockedT = (v.blockedT || 0) + dt;
+        if (v.blockedT > 8) { target = v.model.speed * .5; v.wait = 0; }
+      } else v.blockedT = 0;
+
+      // Autobuses y guaguas se detienen en las paradas de su propia ruta.
       if (['bus', 'guagua', 'publico'].includes(v.model.kind)) {
-        const stop = stops.find(s => s.node === e.b);
+        const stop = v.lineId != null ? lines[v.lineId]?.stops.find(s => s.node === e.b) : null;
         if (stop && v.lastStop !== stop && remaining < 9) {
           v.wait = 3.2; v.lastStop = stop;
           if (!stop.busy) stop.busy = { v, t: 0, boarded: false, alighted: false, pax: null };
@@ -461,10 +518,10 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
       else v.g.visible = true;
     }
 
-    // Pasajeros: esperan en la parada, suben al autobús y otro baja.
+    // Pasajeros: esperan, abordan una guagua de su línea y bajan en su destino.
     for (const s of stops) {
       s.nextBus = Math.max(0, (s.nextBus || 0) - dt);
-      if (s.busy) s.nextBus = 35 + Math.random() * 25;
+      if (s.busy) s.nextBus = (s.frequency || 40) + Math.random() * 10;
       const near = Math.hypot(s.x - px, s.z - pz) < 145;
       s.g.visible = near;
       if (s.busy) {
@@ -474,21 +531,39 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
           if (p) {
             const v = b.v, e = v.edge, rx = -e.dz, rz = e.dx;
             const door = { x: v.g.position.x + rx * 1.05 - e.dx * v.model.length * .15, z: v.g.position.z + rz * 1.05 - e.dz * v.model.length * .15 };
-            p.state = 'boarding'; p.t = 0; p.from = [p.g.position.x, p.g.position.z]; p.to = [door.x, door.z];
-            b.pax = p;
+            if (!p.destination) {
+              const line = lines[v.lineId];
+              p.destination = line ? pickDestination(line.stops, s) : null;
+              p.destNode = p.destination?.node || null;
+              p.destName = p.destination?.name || null;
+            }
+            p.state = 'boarding'; p.t = 0; p.rideT = 0;
+            p.from = [p.g.position.x, p.g.position.z]; p.to = [door.x, door.z];
+            v.riders.push(p); b.pax = p;
           }
           b.boarded = true;
         }
         if (!b.alighted && b.t > .95) {
-          const p = s.pax.find(q => q.arrival && q.state === 'away');
-          if (p) {
-            const v = b.v, e = v.edge, rx = -e.dz, rz = e.dx;
-            const dx = v.g.position.x + rx * 1.05 - e.dx * v.model.length * .15;
-            const dz = v.g.position.z + rz * 1.05 - e.dz * v.model.length * .15;
-            p.g.visible = true; p.g.position.set(dx, 0, dz);
-            p.state = 'alighting'; p.t = 0; p.from = [dx, dz]; p.to = p.home;
-            b.alighter = p;
+          const v = b.v;
+          const alighters = (v.riders || []).filter(p => p.state === 'riding' && p.destNode === s.node);
+          const e = v.edge, rx = -e.dz, rz = e.dx;
+          const doorX = v.g.position.x + rx * 1.05 - e.dx * v.model.length * .15;
+          const doorZ = v.g.position.z + rz * 1.05 - e.dz * v.model.length * .15;
+          for (const p of alighters) {
+            p.g.visible = true; p.g.position.set(doorX, 0, doorZ);
+            p.state = 'alighting'; p.t = 0;
+            p.from = [doorX, doorZ];
+            p.to = [s.x + (s.ox || 0) * 1.4, s.z + (s.oz || 0) * 1.4];
           }
+          if (alighters.length) v.riders = v.riders.filter(p => !alighters.includes(p));
+          if (!alighters.length) {
+            const p = s.pax.find(q => q.arrival && q.state === 'away');
+            if (p) {
+              p.g.visible = true; p.g.position.set(doorX, 0, doorZ);
+              p.state = 'alighting'; p.t = 0; p.from = [doorX, doorZ]; p.to = p.home;
+            }
+          }
+          b.alighter = alighters[0] || null;
           b.alighted = true;
         }
         if (b.t > 3.7) s.busy = null;
@@ -500,14 +575,19 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
           p.g.position.x = p.from[0] + (p.to[0] - p.from[0]) * k;
           p.g.position.z = p.from[1] + (p.to[1] - p.from[1]) * k;
           p.g.position.y = Math.abs(Math.sin(k * Math.PI * 3)) * .06;
-          if (k >= 1) { p.g.position.y = 0; p.state = p.state === 'boarding' ? 'gone' : 'wait'; p.timer = p.state === 'gone' ? 9 + Math.random() * 9 : 0; }
-        } else if (p.state === 'gone') {
-          p.timer -= dt;
-          if (p.timer <= 0) { p.state = 'wait'; p.g.position.set(p.home[0], 0, p.home[1]); }
+          if (k >= 1) {
+            p.g.position.y = 0;
+            if (p.state === 'boarding') { p.state = 'riding'; p.g.visible = false; }
+            else { p.state = 'gone'; p.timer = 9 + Math.random() * 9; }
+          }
+        } else if (p.state === 'riding' || p.state === 'gone') {
+          p.rideT = (p.rideT || 0) + dt;
+          if (p.state === 'gone') { p.timer -= dt; if (p.timer <= 0) { p.state = 'wait'; p.g.position.set(p.home[0], 0, p.home[1]); p.rideT = 0; } }
+          else if (p.rideT > 150) { p.state = 'wait'; p.g.position.set(p.home[0], 0, p.home[1]); p.rideT = 0; }
         } else {
           p.g.position.y = Math.abs(Math.sin(clock * 1.6 + p.home[0])) * .02;
         }
-        p.g.visible = near && p.state !== 'gone' && p.state !== 'away';
+        p.g.visible = near && p.state !== 'gone' && p.state !== 'away' && p.state !== 'riding';
       }
     }
 
@@ -539,7 +619,16 @@ export function createTrafficSystem(T, scene, colliders, world, options = {}) {
   }
 
   return {
-    update, collide, setNight, vehicles, stops, graph, nearStop: (pos, radius = 3.4) => stops.find(s => Math.hypot(pos.x - s.x, pos.z - s.z) < radius) || null,
-    stats: () => ({ vehicles: vehicles.length, parked: parked.length, nodes: graph.nodes.size, lights: graph.lights.length, stops: stops.length, lines: [...new Set(stops.map(s => s.line))].length, passengers: stops.reduce((n, s) => n + s.pax.filter(p => p.state === 'wait').length, 0) })
+    update, collide, setNight, vehicles, stops, lines, graph,
+    nearStop: (pos, radius = 3.4) => stops.find(s => Math.hypot(pos.x - s.x, pos.z - s.z) < radius) || null,
+    nextStop: (stop) => (stop ? stops.filter(s => s.line === stop.line)[(stops.filter(s => s.line === stop.line).indexOf(stop) + 1) % stops.filter(s => s.line === stop.line).length] : null),
+    routeForStop: (stop) => (stop ? lines.find(l => l.id === stop.lineId) || null : null),
+    stats: () => ({
+      vehicles: vehicles.length, parked: parked.length, nodes: graph.nodes.size, lights: graph.lights.length,
+      stops: stops.length, lines: lines.length,
+      passengers: stops.reduce((n, s) => n + s.pax.filter(p => p.state === 'wait').length, 0),
+      riding: stops.reduce((n, s) => n + s.pax.filter(p => p.state === 'riding').length, 0),
+      buses: vehicles.filter(v => v.lineId != null).length, pedestrianYields
+    })
   };
 }

@@ -2,7 +2,7 @@
 
 Fecha: 2026-11-22  
 Rama de trabajo: `mundo-abierto-trafico-minimapa`  
-Base auditada: `ade6566` · Cierre 0.8.0: `5b9285c`
+Base auditada: `ade6566` · Cierre anterior 0.8.0: `5b9285c` · Trabajo 0.9.0 en curso
 PR #1: **Draft**, abierto contra `main`  
 Pull Request: https://github.com/pruebadejoseholaaas-coder/operacion-caribedf/pull/1
 
@@ -15,9 +15,10 @@ funciona y el juego arranca en Chromium headless con WebGL por software. El PR #
 como **Draft** contra `main`; no se ha fusionado.
 
 El estado real es **prototipo avanzado**, no un juego terminado. Hay sistemas completos y
-verificados, sistemas parciales y elementos todavía decorativos. La versión de este bloque es
-**0.8.0** y añade tres frentes nuevos: economía de comercios, transporte público integrado con
-habitantes y una primera capa de optimización/automatización.
+verificados, sistemas parciales y elementos todavía decorativos. La versión de trabajo es
+**0.9.0** y añade tres frentes nuevos: transporte público con rutas propias, seguridad vial
+ante peatones y vida cotidiana/espacio público. La base 0.8.0 ya tenía economía de comercios,
+transporte integrado y optimización.
 
 ## 2. Arquitectura real
 
@@ -29,7 +30,10 @@ habitantes y una primera capa de optimización/automatización.
 | `src/citizens.js` | Rutinas, rutas, estados, interiores, compras, transporte, LOD | Funcional, verificado headless |
 | `src/interiors.js` | 22 viviendas NPC, hospital, escuela, comercios, colisiones interiores | Funcional, verificado headless |
 | `src/businesses.js` | 40 comercios, stock, ventas, reposición, colas, panel F | Funcional, verificado headless |
-| `src/economy.js` | Preferencias, demanda horaria, colas, precios y costos | Nuevo, probado con `node:test` |
+| `src/economy.js` | Preferencias, demanda horaria, colas, precios y costos | Funcional, probado con `node:test` |
+| `src/transit.js` | Líneas, paradas, destinos y ruta BFS | Nuevo, probado con `node:test` |
+| `src/trafficRules.js` | Peatón delante y distancia de frenado | Nuevo, probado con `node:test` |
+| `src/barrio.js` | Plaza Los Almendros y mobiliario | Nuevo, visual/headless |
 | `src/jobs.js` | Turnos, reparto, misión, recompensas y reputación | Funcional |
 | `src/house.js` | Casa del jugador, cama, nevera, cocina, luces, inventario doméstico | Funcional |
 | `src/missions.js` | Misión principal encadenada y marcadores | Funcional |
@@ -48,6 +52,7 @@ habitantes y una primera capa de optimización/automatización.
 - Arranque, selección de rol, HUD, menú, ajustes y créditos.
 - Ciudad, calles, aceras, edificios, vegetación, farolas y clima.
 - Tráfico con grafo, carriles, semáforos, frenado, separación, estacionados y reciclaje.
+- Vehículos que reducen velocidad en cruces y ceden el paso a peatones delante.
 - 40 comercios con fachada, interiores, stock, precios en RD$, reposición y panel F.
 - 22 viviendas NPC con interiores, rutinas de casa/trabajo, sueño, hospital y escuela.
 - Casa del jugador con cama, nevera, cocina, luces, inventario y guardado.
@@ -66,17 +71,19 @@ habitantes y una primera capa de optimización/automatización.
   y avanzar a la siguiente parada.
 - **Optimización**: actualización LOD de NPC por distancia, ocultado de NPC lejanos,
   actualización de tráfico por distancia, interiores ocultos fuera de vista.
-- **Pruebas**: `npm test` con 9 pruebas, incluidas simulaciones de NPC, compra y transporte; workflow de GitHub Actions para PR.
+- **Pruebas**: `npm test` con 16 pruebas, incluidas simulación de NPC, compra, transporte,
+  rutas de guagua y reglas de peatón; workflow de GitHub Actions para PR.
 
 ### Parcial o con límites conocidos
 
-- **Tráfico vs. NPC**: los vehículos frenan entre sí y respetan semáforos, pero no hay
-  colisión física vehículo-peatón. No se debe afirmar que el tráfico esquiva peatones.
-- **Transporte del jugador**: el viaje es una transición con fundido a la parada siguiente,
-  no una simulación de asiento dentro del autobús.
-- **Compras de habitantes**: los trabajadores compran después de su turno; los habitantes
-  de la zona residencial alejada no tienen comercios a menos de 150 m, por lo que no compran
-  antes de trabajar. Es una limitación geográfica real, no un fallo de la cola.
+- **Tráfico vs. NPC**: los vehículos reducen velocidad en cruces y ceden ante peatones, pero
+  no hay colisión física vehículo-peatón. No se debe afirmar que los esquivan lateralmente.
+- **Transporte del jugador**: el viaje es una transición con fundido a la siguiente parada de
+  la misma línea, no una simulación de asiento dentro del autobús. Los NPC tienen destino,
+  abordan y descienden; falta la verificación visual de un viaje completo de punta a punta.
+- **Compras de habitantes**: en la auditoría se midieron las 22 direcciones de rutina y todas
+  están a menos de 150 m de un comercio. La compra antes del turno se verificó en simulación;
+  el límite anterior que hablaba de una zona aislada era incorrecto.
 - **Interiores**: son explorables y tienen colisiones, pero no todos los edificios de la
   ciudad tienen interior. Solo viviendas NPC, hospital, escuela y comercios.
 - **Android**: no se ha probado en un teléfono físico. Solo hay evidencia en Chromium

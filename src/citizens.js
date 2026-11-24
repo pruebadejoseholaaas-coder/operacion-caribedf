@@ -26,7 +26,7 @@ const JOB_SHOPS = {
   emprendedora: ['ventorrillo', 'colmado', 'reposteria']
 };
 
-export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swing, interiors: interiorApi, businesses: businessApi, traffic: trafficApi }) {
+export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swing, interiors: interiorApi, businesses: businessApi, traffic: trafficApi, leisureSpots = [] }) {
   const nodes = [...graph.nodes.values()];
   const byKey = new Map(nodes.map(n => [n.k, n]));
   const shopList = typeof shops === 'function' ? shops() : (shops || []);
@@ -35,6 +35,7 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
   let business = businessApi || null;
   let traffic = trafficApi || null;
   let weather = 0;
+  const plazaSpots = Array.isArray(leisureSpots) ? leisureSpots : [];
   let works = assignWorks();
   let clock = 8 * 3600;
 
@@ -138,9 +139,10 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
   }
   function chooseShop(n) {
     if (!business?.availableFor || !interiors) return null;
+    const origin = n.citizen?.insideKind === 'home' || n.citizen?.inside?.startsWith('home-') ? n.home : n.g.position;
     const pick = (list) => {
       const pool = list.filter(s => {
-        const d = Math.hypot(s.g.position.x - n.g.position.x, s.g.position.z - n.g.position.z);
+        const d = Math.hypot(s.g.position.x - origin.x, s.g.position.z - origin.z);
         return d > 18 && d < 150 && s.data.id !== n.workShopId;
       });
       return pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
@@ -274,6 +276,7 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
     if (!c) return;
     clock = worldClock;
     c.shopCooldown = Math.max(0, (c.shopCooldown || 0) - dt);
+    c.plazaCooldown = Math.max(0, (c.plazaCooldown || 0) - dt);
     const hour = worldClock / 3600;
     const sleeping = n.sleepStart > n.sleepEnd ? (hour >= n.sleepStart || hour < n.sleepEnd) : (hour >= n.sleepStart && hour < n.sleepEnd);
     if (c.inside) n.g.visible = interiors?.npcVisible(c.inside) ?? true;
@@ -324,6 +327,12 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
     const leave = n.shiftStart - .65, returnAt = n.shiftEnd + 1.35;
 
     if (c.state === 'home' || c.state === 'preparing') {
+      if (hour < leave && n.usePlaza && n.plazaSpot && (c.plazaCooldown || 0) <= 0 && Math.random() < dt * .014) {
+        if (c.inside) interiors.exitNpc(n);
+        c.plazaCooldown = 180; c.action = 'walk';
+        routeTo(n, n.plazaSpot, 'leisure');
+        return;
+      }
       if (hour < leave && c.shopCooldown <= 0 && Math.random() < dt * (c.inside ? .025 : .055)) {
         const shop = chooseShop(n);
         if (shop) {
@@ -496,6 +505,7 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
 
     if (c.state === 'leisureIdle') {
       n.routineState = 'libre';
+      c.action = c.target?.kind === 'bench' && Math.hypot(n.g.position.x - c.target.x, n.g.position.z - c.target.z) < 1.6 ? 'sit' : 'walk';
       if (hour >= n.shiftStart - .65 && hour < n.shiftEnd) { c.state = 'toWork'; routeTo(n, n.work, 'toWork'); return; }
       if (weather === 2 && Math.random() < dt * .22) { routeTo(n, n.home, 'toHome'); return; }
       if (hour >= returnAt) { routeTo(n, n.home, 'toHome'); move(n, dt, t, .95); return; }
@@ -567,7 +577,7 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
         return { institution: inst.id.replace('inst-', ''), shop: null, shopId: null, x: inst.door.x, z: inst.door.z, node: nearestNode(inst.door.x, inst.door.z), label: inst.name, station: inst.station[n.occupation] };
       }
       const ids = JOB_SHOPS[n.occupation] || [];
-      const shop = shopList.find(s => ids.includes(s.data.id)) || shopList[i % Math.max(1, shopList.length)];
+      const shop = ids.map(id => shopList.find(s => s.data.id === id)).find(Boolean) || shopList[i % Math.max(1, shopList.length)];
       if (!shop) { const h = homes[i]; return { shop: null, shopId: null, x: h.x, z: h.z, node: h.node, label: 'casa' }; }
       const r = shop.g.rotation.y;
       const door = { x: shop.g.position.x + Math.sin(r) * 4.1, z: shop.g.position.z + Math.cos(r) * 4.1 };
@@ -592,6 +602,12 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
       n.workInstitution = n.work.institution || null;
       n.preference = preferenceFor(n, i);
       n.useTransit = i % 4 === 0;
+      n.usePlaza = i % 3 === 0;
+      const plaza = plazaSpots.reduce((best, spot) => {
+        const d = Math.hypot(spot.x - n.home.x, spot.z - n.home.z);
+        return !best || d < best.d ? { spot, d } : best;
+      }, null);
+      n.plazaSpot = plaza && plaza.d < 80 ? plaza.spot : null;
       n.citizen = { state: 'home', path: [], pathIndex: 0, pathKind: null, stateSince: 0, idleT: 0, target: null, activity: 'rest', maxStep: 0, inside: null, insideKind: null, insidePath: [], insideIndex: 0, insideTarget: null, stationKey: null, action: 'walk', task: null, serveT: 0, lastVisits: 0, shopId: null, shopCooldown: 20 + Math.random() * 50, shopWait: 0, shopServeT: 0, lastPurchase: null, lodAcc: 0, transit: null, transitWait: 0, transitDone: false };
       n.g.position.set(n.home.x, 0, n.home.z);
       n.g.visible = true;
