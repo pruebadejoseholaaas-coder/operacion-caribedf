@@ -14,7 +14,7 @@ GPU real, así que el rendimiento final sigue pendiente de validación en dispos
   (pendiente de revisión del propietario; no se ha fusionado a `main`).
 - Último commit del bloque anterior: `ade6566` — publicación de la versión 0.7.0.
 - Cambios de este bloque: economía de comercios, clientes NPC, transporte público integrado,
-  LOD de habitantes, pruebas automáticas y CI. El commit de cierre se indica al final de este informe.
+  LOD de habitantes, pruebas automáticas y CI. Commit funcional de cierre: `02b3391`.
 - Se conservan los 8 parches y el bundle 0.4 de bloques anteriores. Para la entrega 0.5 se generaron
   `operacion-caribe-0.5.bundle` y 13 parches en `../operacion-caribe-entrega-0.5/`.
 

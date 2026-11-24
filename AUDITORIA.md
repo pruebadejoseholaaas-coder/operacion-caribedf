@@ -2,7 +2,7 @@
 
 Fecha: 2026-11-22  
 Rama de trabajo: `mundo-abierto-trafico-minimapa`  
-Base auditada: `ade6566`  
+Base auditada: `ade6566` · Cierre funcional de este bloque: `02b3391`  
 Pull Request: https://github.com/pruebadejoseholaaas-coder/operacion-caribedf/pull/1
 
 ## 1. Resumen ejecutivo
