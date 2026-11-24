@@ -2,7 +2,8 @@
 
 Fecha: 2026-11-22  
 Rama de trabajo: `mundo-abierto-trafico-minimapa`  
-Base auditada: `ade6566` · Cierre funcional de este bloque: `02b3391`  
+Base auditada: `ade6566` · Cierre 0.8.0: `5b9285c`
+PR #1: **Draft**, abierto contra `main`  
 Pull Request: https://github.com/pruebadejoseholaaas-coder/operacion-caribedf/pull/1
 
 ## 1. Resumen ejecutivo
@@ -10,7 +11,8 @@ Pull Request: https://github.com/pruebadejoseholaaas-coder/operacion-caribedf/pu
 Operación Caribe **no es un prototipo vacío**: es un juego web 3D funcional construido con
 Three.js y Vite, con una ciudad basada en OpenStreetMap, tráfico, NPC, comercios, interiores,
 casa del jugador, misiones, trabajos, clima, audio y persistencia. La compilación de producción
-funciona y el juego arranca en Chromium headless con WebGL por software.
+funciona y el juego arranca en Chromium headless con WebGL por software. El PR #1 está abierto
+como **Draft** contra `main`; no se ha fusionado.
 
 El estado real es **prototipo avanzado**, no un juego terminado. Hay sistemas completos y
 verificados, sistemas parciales y elementos todavía decorativos. La versión de este bloque es
@@ -31,10 +33,11 @@ habitantes y una primera capa de optimización/automatización.
 | `src/jobs.js` | Turnos, reparto, misión, recompensas y reputación | Funcional |
 | `src/house.js` | Casa del jugador, cama, nevera, cocina, luces, inventario doméstico | Funcional |
 | `src/missions.js` | Misión principal encadenada y marcadores | Funcional |
-| `src/climate.js` | Cielo, lluvia, charcos, nubes, viento, noche | Funcional |
+| `src/ambience.js` | Cielo, lluvia, charcos, nubes, viento, noche | Funcional |
 | `src/audio.js` | Audio procedural, motores, ambiente, radio | Funcional |
-| `src/minimap.js` / `src/map.js` | Minimapa circular y mapa completo | Funcional |
-| `src/ui.js` / `src/phone.js` | HUD, menú, teléfono, inventario, ajustes | Funcional |
+| `src/minimap.js` | Minimapa circular y mapa completo | Funcional |
+| `src/ui.js` | HUD, teléfono, inventario, avisos y ajustes | Funcional |
+| `src/menu.js` | Menú principal, ajustes y créditos | Funcional |
 | `tests/` | Pruebas unitarias y estáticas | Nuevo |
 | `.github/workflows/pr-checks.yml` | Build + tests en cada PR | Nuevo |
 
@@ -63,7 +66,7 @@ habitantes y una primera capa de optimización/automatización.
   y avanzar a la siguiente parada.
 - **Optimización**: actualización LOD de NPC por distancia, ocultado de NPC lejanos,
   actualización de tráfico por distancia, interiores ocultos fuera de vista.
-- **Pruebas**: `npm test` con 7 pruebas y workflow de GitHub Actions para PR.
+- **Pruebas**: `npm test` con 9 pruebas, incluidas simulaciones de NPC, compra y transporte; workflow de GitHub Actions para PR.
 
 ### Parcial o con límites conocidos
 
@@ -107,7 +110,7 @@ npm test
 # 7 tests, 7 pass, 0 fail
 ```
 
-Pruebas headless con Chromium + SwiftShader:
+Pruebas locales `node:test` (sin navegador) y pruebas headless con Chromium + SwiftShader:
 
 - Comercios: **109 ventas de ciudadanos** en una simulación de 3 horas, **7 comercios**
   con ventas de ciudadanos, **0 rutas inseguras**, **0 NPC bloqueados**, cola máxima 0 al
@@ -131,7 +134,7 @@ Pruebas headless con Chromium + SwiftShader:
 | 3. Vida urbana y optimización | Parcial: LOD, clima, visibilidad, pruebas | Sí | Verificado headless | Mantiene rutinas e interiores |
 
 No se declara ninguna fase como “terminada al 100 %” en Android físico. La validación
-visual y de rendimiento en GPU real está pendiente.
+visual y de rendimiento en GPU real está pendiente. El PR permanece en Draft.
 
 ## 7. Próximas tareas prioritarias
 

@@ -44,7 +44,7 @@ export function saleCost(price) {
   return Math.max(1, Math.round(Number(price) * .55));
 }
 
-export function productIndexFor(stock, preference, random = Math.random) {
+export function productIndexFor(stock, random = Math.random) {
   const available = [];
   for (let i = 0; i < stock.length; i++) if (stock[i] > 0) available.push(i);
   if (!available.length) return -1;

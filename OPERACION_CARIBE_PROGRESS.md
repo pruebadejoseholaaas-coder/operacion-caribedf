@@ -57,7 +57,7 @@ separó la salida de clientes de la de empleados para no restar personal por err
 ### Verificación de este bloque
 
 - `npm run build`: correcto. Bundle principal 807.34 kB (gzip 230.18 kB).
-- `npm test`: 7/7 pruebas correctas.
+- `npm test`: 9/9 pruebas correctas (incluye simulación de NPC que compra y de NPC que aborda una guagua).
 - Simulación de 3 horas en Chromium headless:
   - 109 ventas atribuidas a ciudadanos,
   - 7 comercios con ventas de ciudadanos,
@@ -80,6 +80,12 @@ separó la salida de clientes de la de empleados para no restar personal por err
 - Los habitantes de la zona residencial alejada no tienen comercios a menos de 150 m; por eso
   compran sobre todo los trabajadores después del turno.
 - No todos los edificios tienen interior; están cubiertos viviendas NPC, hospital, escuela y comercios.
+
+### Correcciones de la etapa 1 (v0.9.0 en desarrollo)
+- Se eliminó el parámetro `preference` sin uso de `productIndexFor()`.
+- Se añadió una guarda para que un NPC en ocio vuelva a su turno cuando llega la hora.
+- Se añadieron pruebas reproducibles de simulación de NPC, compra, cola y transporte.
+- `AUDITORIA_OPERACION_CARIBE.md` quedó como redirección histórica; la fuente vigente es `AUDITORIA.md`.
 
 ### Próxima tarea exacta
 

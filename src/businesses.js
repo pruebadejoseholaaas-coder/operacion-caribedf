@@ -770,7 +770,7 @@ export function createBusinessSystem(T, scene, colliders, world, avoid = []) {
  function isFirst(shop,npc){return !!shop&&shop.queue[0]?.npc===npc}
  function serveCustomer(shop,npc){
   if(!shop||!shop.open||!isFirst(shop,npc)||!shop.actualStaff)return null;
-  const index=productIndexFor(shop.stock,npc.preference);
+  const index=productIndexFor(shop.stock);
   if(index<0)return null;
   return recordSale(shop,index,'citizen');
  }
@@ -812,7 +812,7 @@ export function createBusinessSystem(T, scene, colliders, world, avoid = []) {
       v.t-=dt;
       v.a.rotation.x=-.95+Math.sin(s.phase*8)*.15;v.b.rotation.x=-.35;
       if(v.t<=0){
-       const i=productIndexFor(s.stock,'visitor');
+       const i=productIndexFor(s.stock);
        if(i>=0)recordSale(s,i,'visitor');
        v.state='leaving';v.g.rotation.y=0;
       }

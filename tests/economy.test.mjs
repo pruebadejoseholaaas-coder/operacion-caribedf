@@ -30,7 +30,7 @@ test('las posiciones de cola son únicas y se transforman al mundo', () => {
 test('las compras descuentan existencias y generan costo', () => {
   assert.equal(saleCost(100), 55);
   const stock = [0, 2, 0, 1];
-  const picked = productIndexFor(stock, 'food', () => .99);
+  const picked = productIndexFor(stock, () => .99);
   assert.ok([1, 3].includes(picked));
-  assert.equal(productIndexFor([0, 0], 'food', () => 0), -1);
+  assert.equal(productIndexFor([0, 0], () => 0), -1);
 });

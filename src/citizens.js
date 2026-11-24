@@ -496,6 +496,7 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
 
     if (c.state === 'leisureIdle') {
       n.routineState = 'libre';
+      if (hour >= n.shiftStart - .65 && hour < n.shiftEnd) { c.state = 'toWork'; routeTo(n, n.work, 'toWork'); return; }
       if (weather === 2 && Math.random() < dt * .22) { routeTo(n, n.home, 'toHome'); return; }
       if (hour >= returnAt) { routeTo(n, n.home, 'toHome'); move(n, dt, t, .95); return; }
       c.idleT -= dt;
