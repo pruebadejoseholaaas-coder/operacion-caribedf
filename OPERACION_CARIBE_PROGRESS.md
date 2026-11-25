@@ -1,6 +1,6 @@
 # Operación Caribe — Informe de progreso
 
-Actualizado: 2026-11-22 · Rama: `mundo-abierto-trafico-minimapa` (octavo bloque · v0.9.0 en desarrollo)
+Actualizado: 2026-11-22 · Rama: `mundo-abierto-trafico-minimapa` (noveno bloque · v0.9.0 en desarrollo)
 
 Este documento refleja el estado **real y verificado** del proyecto, no solo lo que existe en el código.
 La verificación se hizo compilando con Vite y ejecutando el juego en Chromium headless con WebGL
@@ -28,6 +28,87 @@ npm run dev            # servidor local
 
 En desarrollo se expone `window.__oc` (solo con `import.meta.env.DEV`) con escena, cámara,
 colisiones, mundo, tráfico, comercios, NPC y jugador. Sirve para pruebas automatizadas.
+
+## Noveno bloque: zona real, solar tropical y correcciones de transporte (v0.9.0)
+
+### Inspección real realizada
+
+- Se revisó `public/world/world.json`: **215 tramos de calle, 1.244 edificios y 13 zonas verdes**
+  en el mapa OSM. El punto de aparición es `[6.8, -18.7]`.
+- Se comprobó que la antigua plaza estaba en `(834, 1230)`, **fuera del mapa urbano** y de la
+  zona caminable; por eso no podía integrarse en las rutinas de los habitantes.
+- Se revisaron los sistemas de `src/`: tráfico, ciudadanos, interiores, comercios, casa,
+  trabajos, minimapa, ambiente y barrio. Los 22 NPC tienen casa y trabajo reales dentro del mapa;
+  la plaza no era uno de sus destinos.
+- No se recibieron archivos de imagen accesibles en el workspace. La zona se construyó siguiendo
+  la descripción disponible (solar tropical con hierba, cerca, acera, zanja, árboles, postes y
+  edificios de fondo) y se declara pendiente la comparación visual exacta con las fotografías.
+
+### Zona nueva: Solar La Loma
+
+- Archivo nuevo `src/tropicalLot.js`. Ocupa un solar vacío del borde este, entre las calles
+  existentes, sin sustituir ni duplicar ninguna zona anterior:
+  límites `x 128..185`, `z -282..-212`.
+- Terreno de hierba con **desniveles suaves reales** (`lotHeightAt`); el jugador ajusta su altura
+  al caminar por el solar. La lógica de colisiones 2D se conserva.
+- Cerca perimetral con **puerta norte** de 12 m, acera de concreto junto a la carretera existente,
+  zanja de drenaje con agua estancada, árbol grande, cuatro palmeras, arbustos, matas, piedras,
+  postes de luz y cables.
+- Edificios residenciales de fondo y montañas tropicales en el horizonte, sin nieve.
+- La zona se añadió al minimapa como zona verde; no es un decorado aislado: el jugador puede
+  entrar caminando por la puerta y recorrerla.
+- Verificación headless: altura del jugador en el centro `0.3036` m (coincide con `heightAt`),
+  fuera del solar `0`; puerta sin colisionador; captura de la zona desde la carretera revisada.
+
+### Plaza Los Almendros integrada
+
+- `src/barrio.js` se reubicó al solar urbano `(-72, -24)`, tamaño `28 × 18`, con cuatro bancos,
+  árboles, lámparas, kiosco y letrero. La antigua ubicación no era accesible.
+- El minimapa muestra el marcador verde de la plaza y la zona verde del solar.
+- Los habitantes con casa cercana reciben un destino de plaza; las rutas se calculan por el grafo
+  peatonal existente. En simulación headless de 4 horas se registraron **3 visitas reales a bancos**
+  (Luis, Carla y Pedro), además de rutas forzadas de validación. Después continúan con sus compras,
+  trabajo o regreso a casa; no quedan atrapados.
+
+### Transporte de NPC corregido
+
+- Se eliminó el viaje simulado que ocultaba al NPC y lo teletransportaba al destino tras 16 s.
+- `src/transit.js` incorpora `planTransit`, `sameLine`, `busServesStop` y `busAtStop`: el NPC solo
+  aborda una guagua **de su línea y realmente cerca de su parada**.
+- Mientras viaja, el NPC permanece oculto dentro del autobús real y solo baja cuando ese autobús
+  llega a la parada destino. Si la línea cambia o el servicio se interrumpe, baja en la posición
+  actual y continúa caminando; nunca salta al destino.
+- Pruebas nuevas: línea incorrecta no permite abordar; sin guagua no hay teletransporte; sin paradas
+  compatibles se camina. La suite pasó de 16 a **24 pruebas**.
+
+### Pruebas de este bloque
+
+| Prueba | Resultado |
+| --- | --- |
+| `npm test` | **24/24 pruebas correctas**. |
+| `npm run build` | Correcto; bundle principal ≈822,42 kB (gzip ≈235,68 kB). |
+| Carga en Chromium headless | Sin `pageerror` ni errores de consola. |
+| Altura del jugador en el solar | `0.3036` m en el centro; `0` fuera. |
+| Puerta del solar | Sin colisionador en el centro de la puerta. |
+| Plaza y rutinas | 3 visitas a bancos en 4 h simuladas; 0 rutas inseguras. |
+| Minimapa | Zona verde del solar y marcador de plaza presentes; sin errores. |
+| Capturas revisadas | Vista desde la carretera, interior del solar y plaza. |
+
+### Límites que siguen abiertos
+
+- No hay fotografías de referencia accesibles en el repositorio ni en el workspace; la semejanza
+  exacta con el lugar real **no está verificada**. Si se aportan las imágenes, se ajustarán
+  proporciones, fachadas y detalles del terreno.
+- El jugador aún usa la transición de guagua existente; los NPC ya usan el autobús real.
+- No se ha probado en Android físico ni GPU real; las capturas y FPS son de SwiftShader.
+- Los edificios residenciales nuevos son fachadas de fondo, no viviendas explorables.
+
+### Próxima tarea prioritaria
+
+1. Comparar el solar con las fotografías reales cuando estén disponibles y ajustar el terreno.
+2. Hacer que las guaguas transporten también al jugador con asiento y parada de bajada.
+3. Añadir más actividades de plaza (dominó, música, conversaciones sentadas) y eventos por hora.
+4. Continuar con taxis/públicos, estacionamientos dedicados y pruebas en Android.
 
 ## Séptimo bloque: economía, clientes, transporte y estabilización (v0.8.0)
 
@@ -483,9 +564,9 @@ casa, el hospital y la escuela; no sustituye una prueba en Android físico.
   pero falta probarlo en un teléfono y medir FPS con calor/consumo.
 - **Fase 2**: el núcleo de rutinas casa-trabajo está implementado y probado. Quedan interiores de
   viviendas de NPC, trabajo interior detrás del mostrador y conversaciones encadenadas.
-- **Fase 1**: hospital y escuela son fachadas; no tienen interior explorable. La variedad de
-  alturas y el cableado urbano todavía es limitada.
-- **Fase 3**: no hay estacionamientos dedicados ni servicio de taxi/público con pasajeros.
+- **Fase 1**: hospital y escuela son fachadas; no tienen interior explorable. El solar este ya
+  tiene cableado, cerca, zanja y desniveles, pero falta compararlo con las fotos reales.
+- **Fase 3**: los NPC ya usan guaguas reales con línea y parada; faltan taxis/públicos con pasajeros y estacionamientos dedicados.
 - **Fase 4**: no hay cofre de almacenamiento separado del inventario general ni casas de NPC
   explorables. La cocina tiene acción, pero no animación de cocinar.
 - **Fase 5**: los clientes son una simulación visual; no hacen cola ni hablan con el jugador.
@@ -500,7 +581,7 @@ casa, el hospital y la escuela; no sustituye una prueba en Android físico.
 
 1. **Fase 2 pulida**: colas de clientes, conversaciones encadenadas y más tareas por oficio.
 2. **Fase 5**: revisar los 40 comercios uno por uno, añadir productos y tareas específicas.
-3. **Fase 3**: estacionamientos dedicados y servicio de taxi/público con pasajeros.
+3. **Fase 3**: guagua del jugador con asiento/parada de bajada y estacionamientos dedicados.
 4. **Fase 6**: más misiones, historias y eventos de barrio.
 5. **Fase 8**: APK Android con Capacitor, LOD/texturas y prueba en dispositivo real.
 6. **Publicación**: sigue bloqueada por `403`; requiere un token con permiso de escritura.

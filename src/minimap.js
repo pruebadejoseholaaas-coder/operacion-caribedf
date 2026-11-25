@@ -113,6 +113,11 @@ export function createMinimap(world, sources, options = {}) {
       ctx.beginPath(); ctx.arc(home.x, home.z, 2.8, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = '#10241a'; ctx.lineWidth = .8; ctx.stroke();
     }
+    const plaza = sources.plaza ? sources.plaza() : null;
+    if (plaza) {
+      ctx.fillStyle = '#8ed081'; ctx.beginPath(); ctx.arc(plaza.x, plaza.z, 2.6, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#193b25'; ctx.lineWidth = .8; ctx.stroke();
+    }
     const job = sources.job ? sources.job() : null;
     if (job) {
       ctx.strokeStyle = '#4fb3ff'; ctx.lineWidth = 1.8;
@@ -193,6 +198,13 @@ export function createMinimap(world, sources, options = {}) {
       b.fillStyle = '#7fe0a8'; b.beginPath(); b.arc(x, y, 4, 0, Math.PI * 2); b.fill();
       b.fillStyle = '#c9f5dc'; b.font = 'bold 11px Trebuchet MS'; b.textAlign = 'center';
       b.fillText('Casa', x, y + 16);
+    }
+    const plaza = sources.plaza ? sources.plaza() : null;
+    if (plaza) {
+      const [x, y] = P(plaza.x, plaza.z);
+      b.fillStyle = '#8ed081'; b.beginPath(); b.arc(x, y, 4, 0, Math.PI * 2); b.fill();
+      b.fillStyle = '#dff4dc'; b.font = 'bold 10px Trebuchet MS'; b.textAlign = 'center';
+      b.fillText('Plaza', x, y + 15);
     }
     const job = sources.job ? sources.job() : null;
     if (job) {

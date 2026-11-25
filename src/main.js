@@ -14,6 +14,7 @@ import { createMissionSystem } from './missions.js';
 import { createCitizenSystem } from './citizens.js';
 import { createInteriorSystem } from './interiors.js';
 import { createBarrioSystem } from './barrio.js';
+import { createTropicalLot } from './tropicalLot.js';
 
 const T=THREE,$=id=>document.getElementById(id);
 const renderer=new T.WebGLRenderer({antialias:true});
@@ -473,7 +474,7 @@ function interact(){
  if(busStop){rideBus(busStop);return}
  toggle();
 }
-let world=null,wt=0,audioClock=0,fpsSmooth=60,fpsClock=0,court=null,courtT=0,interiors=null,barrio=null;
+let world=null,wt=0,audioClock=0,fpsSmooth=60,fpsClock=0,court=null,courtT=0,interiors=null,barrio=null,lote=null;
 loadWorld(T,scene,colliders).then(w=>{if(!w)return;world=w;
  scene.children.slice(legacyStart+1,legacyEnd).forEach(o=>o.visible=false);
  ground.material.map=null;ground.material.color.set(0x8f8a7e);ground.material.needsUpdate=true;
@@ -481,6 +482,8 @@ loadWorld(T,scene,colliders).then(w=>{if(!w)return;world=w;
  house=createHouse(T,scene,colliders,w);
  court=addCourt(w);
  barrio=createBarrioSystem({T,scene,colliders});
+ lote=createTropicalLot({T,scene,colliders});
+ if(lote&&w.greens){const lb=lote.bounds;w.greens.push([lb.x0,lb.z0,lb.x1,lb.z0,lb.x1,lb.z1,lb.x0,lb.z1]);}
  businessSystem=createBusinessSystem(T,scene,colliders,w,[house.home]);
  jobs=createJobSystem(T,scene,{shops:()=>businessSystem.shops,player:()=>player,addCash:n=>businessSystem.addCash(n),save:saveGame,ui:()=>ui,mission:()=>$('mission')});
  missions=createMissionSystem(T,scene,{shops:()=>businessSystem.shops,inventory:()=>businessSystem.inventory(),consume:(n,q)=>businessSystem.consumeItem(n,q),addCash:n=>businessSystem.addCash(n),addRep:n=>jobs.addRep(n),home:()=>house.home,toast:(t,ms)=>ui?.toast(t,ms)});
@@ -522,7 +525,7 @@ loadWorld(T,scene,colliders).then(w=>{if(!w)return;world=w;
   contacts:()=>[{name:'Mamá',role:'Familia',line:'¿Ya comiste, mi amor?'},{name:'Don Ramón',role:'Mecánico',line:'La moto está lista cuando pases.'},{name:'Doña Rosa',role:'Frituras',line:'Hoy hay yaniqueque calentito.'},{name:'Central de repartos',role:'Trabajo',line:'Hay un paquete esperando por ti.'}],
   messages:()=>['Mamá: pasa por la casa cuando puedas.','Central: hay encargos de entrega disponibles.','Barrio: el tráfico está pesado por la avenida.']
  });
- minimap=createMinimap(w,{shops:()=>businessSystem?.shops||[],npcs:()=>npcs,goal:()=>GOAL,home:()=>house?house.home:null,job:()=>jobs.deliveryMarker(),shift:()=>jobs.shiftMarker(),mission:()=>missions?.marker(),stops:()=>trafficSystem?.stops||[],vehicles:()=>trafficSystem?.vehicles||[]},{mobile:mobileDevice});
+ minimap=createMinimap(w,{shops:()=>businessSystem?.shops||[],npcs:()=>npcs,goal:()=>GOAL,home:()=>house?house.home:null,plaza:()=>barrio?.center||null,job:()=>jobs.deliveryMarker(),shift:()=>jobs.shiftMarker(),mission:()=>missions?.marker(),stops:()=>trafficSystem?.stops||[],vehicles:()=>trafficSystem?.vehicles||[]},{mobile:mobileDevice});
  menu=createMenu({
   hasSave:()=>!!readSave(),
   onNew:()=>{try{localStorage.removeItem(SAVE_KEY);localStorage.removeItem('operacion-caribe-economy-v1');localStorage.removeItem('operacion-caribe-mission-v1')}catch{}localStorage.setItem('oc-new','1');location.reload()},
@@ -550,7 +553,7 @@ loadWorld(T,scene,colliders).then(w=>{if(!w)return;world=w;
  $('mission').textContent=missionDone?'Objetivo completado · Explora la ciudad':'Objetivo: llega al punto de encuentro';
  saveGame();
 });
-if(import.meta.env.DEV)window.__oc={scene,renderer,cam,colliders,world:()=>world,traffic:()=>trafficSystem,business:()=>businessSystem,house:()=>house,ui:()=>ui,jobs:()=>jobs,ambience:()=>ambience,audio:()=>audio,menu:()=>menu,missions:()=>missions,citizens:()=>citizens,interiors:()=>interiors,court:()=>court,barrio:()=>barrio,save:()=>saveGame(),insideShop:()=>businessSystem?.insideShop?!!businessSystem.insideShop():false,npcs,player:()=>player,moto,view:()=>({yaw,rot}),state:()=>({energy,job:jobs?.shiftSummary()||jobs?.deliverySummary(),shirtColor,worldClock,inside:!!house?.inside(),progress:jobs?.progress()}),setClock:v=>{worldClock=v},setWeather:v=>{weatherIndex=Math.max(0,Math.min(weatherTypes.length-1,v|0));weatherElapsed=0},setView:(y,r)=>{if(Number.isFinite(y))yaw=y;if(Number.isFinite(r)){rot=r;player.g.rotation.y=r}}};
+if(import.meta.env.DEV)window.__oc={scene,renderer,cam,colliders,world:()=>world,traffic:()=>trafficSystem,business:()=>businessSystem,house:()=>house,ui:()=>ui,jobs:()=>jobs,ambience:()=>ambience,audio:()=>audio,menu:()=>menu,missions:()=>missions,citizens:()=>citizens,interiors:()=>interiors,court:()=>court,barrio:()=>barrio,lote:()=>lote,save:()=>saveGame(),insideShop:()=>businessSystem?.insideShop?!!businessSystem.insideShop():false,npcs,player:()=>player,moto,view:()=>({yaw,rot}),state:()=>({energy,job:jobs?.shiftSummary()||jobs?.deliverySummary(),shirtColor,worldClock,inside:!!house?.inside(),progress:jobs?.progress()}),setClock:v=>{worldClock=v},setWeather:v=>{weatherIndex=Math.max(0,Math.min(weatherTypes.length-1,v|0));weatherElapsed=0},setView:(y,r)=>{if(Number.isFinite(y))yaw=y;if(Number.isFinite(r)){rot=r;player.g.rotation.y=r}}};
 const clock=new T.Clock(),hint=$('h');
 function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.05);t+=dt;
  const menuOpen=!!menu?.isOpen();
@@ -581,6 +584,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
  trafficSystem?.collide(obj,riding?.8:.45);
  if(!riding)for(const n of npcs){if(!n.g.visible)continue;const dx=obj.x-n.g.position.x,dz=obj.z-n.g.position.z,d=Math.hypot(dx,dz);if(d<.72&&d>1e-4){obj.x+=dx/d*(.72-d);obj.z+=dz/d*(.72-d)}}
  const cor=Math.hypot(obj.x-bx,obj.z-bz);
+ if(!riding&&!house?.inside()&&!interiors?.playerInside())player.g.position.y=lote?.heightAt?lote.heightAt(player.g.position.x,player.g.position.z):0;
  if(riding&&cor>.001){spd*=Math.max(.15,1-cor*5);vx*=.85;vz*=.85}
  const sp=Math.hypot(vx,vz);
  if(!house?.inside())energy=Math.max(0,Math.min(100,energy-dt*(riding?.01:sp>6?.22:sp>.6?.05:0)));

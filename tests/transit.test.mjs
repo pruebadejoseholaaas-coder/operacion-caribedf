@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildLines, firstEdgeToward, lineIndexFor, nextStopInLine, pickDestination, stopLabel } from '../src/transit.js';
+import { buildLines, firstEdgeToward, lineIndexFor, nextStopInLine, pickDestination, stopLabel, planTransit, busServesStop, busAtStop } from '../src/transit.js';
 
 const stops = [
-  { name: 'Parada 1', line: 'Ruta Colonial', lineId: 0, node: 'a' },
-  { name: 'Parada 2', line: 'Ruta Colonial', lineId: 0, node: 'b' },
-  { name: 'Parada 3', line: 'Ruta Colonial', lineId: 0, node: 'c' },
-  { name: 'Parada 4', line: 'Ruta Universitaria', lineId: 1, node: 'd' }
+  { name: 'Parada 1', line: 'Ruta Colonial', lineId: 0, node: 'a', x: 0, z: 0 },
+  { name: 'Parada 2', line: 'Ruta Colonial', lineId: 0, node: 'b', x: 40, z: 0 },
+  { name: 'Parada 3', line: 'Ruta Colonial', lineId: 0, node: 'c', x: 80, z: 0 },
+  { name: 'Parada 4', line: 'Ruta Universitaria', lineId: 1, node: 'd', x: 120, z: 0 }
 ];
 
 test('agrupa paradas en rutas con frecuencia y color', () => {
@@ -47,4 +47,23 @@ test('encuentra la primera arista hacia una parada en el grafo', () => {
   const y = { k: 'y', edges: [] };
   graph.nodes.set('y', y);
   assert.equal(firstEdgeToward(graph, y, c), null);
+});
+
+test('un viaje válido usa dos paradas de la misma línea', () => {
+  const from = { x: 0, z: 0 }, to = { x: 80, z: 0 };
+  const plan = planTransit(stops, from, to, 90);
+  assert.ok(plan);
+  assert.equal(plan.from.line, plan.to.line);
+  assert.notEqual(plan.from, plan.to);
+  assert.equal(planTransit(stops, { x: 1000, z: 1000 }, { x: 1000, z: 1000 }, 60), null, 'sin paradas cerca debe caminar');
+});
+
+test('no se puede abordar una guagua de otra línea', () => {
+  const stop = stops[0];
+  const correct = { lineId: 0, line: 'Ruta Colonial', lastStop: stop, x: stop.x, z: stop.z };
+  const wrong = { lineId: 1, line: 'Ruta Universitaria', lastStop: stop, x: stop.x, z: stop.z };
+  assert.equal(busServesStop(correct, stop), true);
+  assert.equal(busServesStop(wrong, stop), false);
+  assert.equal(busAtStop(correct, stop), true);
+  assert.equal(busAtStop(wrong, stop), false);
 });

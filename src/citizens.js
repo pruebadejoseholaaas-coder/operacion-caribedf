@@ -1,4 +1,5 @@
 // Ciudadanos autónomos: vivienda, trabajo, rutas por aceras, horarios y persistencia.
+import { planTransit, busAtStop, busServesStop } from './transit.js';
 // La navegación usa el grafo de calles ya construido por traffic.js. Cada arista se
 // desplaza hacia la acera derecha para que el NPC no camine por el centro de la vía.
 const JOB_SHOPS = {
@@ -151,13 +152,8 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
   }
   function transitRoute(from, to) {
     if (!traffic?.stops?.length || !from || !to) return null;
-    const nearest = (p) => traffic.stops.reduce((best, s) => {
-      const d = Math.hypot(s.x - p.x, s.z - p.z);
-      return !best || d < best.d ? { stop: s, d } : best;
-    }, null);
-    const a = nearest(from), b = nearest(to);
-    if (!a || !b || a.stop === b.stop || a.d > 55 || b.d > 55) return null;
-    return { from: a.stop, to: b.stop, final: to };
+    const plan = planTransit(traffic.stops, from, to, 65);
+    return plan ? { from: plan.from, to: plan.to, final: to } : null;
   }
   function resetPose(n) {
     n.g.position.y = 0; n.g.rotation.x = 0;
@@ -249,6 +245,7 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
       if (stop) n.g.position.set(stop.x + (stop.ox || 0) * 1.2, 0, stop.z + (stop.oz || 0) * 1.2);
     } else if (c.pathKind === 'leisure') {
       c.state = 'leisureIdle'; c.idleT = 2 + Math.random() * 4;
+      if (c.target?.kind === 'bench') c.plazaVisits = (c.plazaVisits || 0) + 1;
     }
     c.path = []; c.pathKind = null; c.pathIndex = 0;
   }
@@ -327,7 +324,7 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
     const leave = n.shiftStart - .65, returnAt = n.shiftEnd + 1.35;
 
     if (c.state === 'home' || c.state === 'preparing') {
-      if (hour < leave && n.usePlaza && n.plazaSpot && (c.plazaCooldown || 0) <= 0 && Math.random() < dt * .014) {
+      if (hour < leave && n.usePlaza && n.plazaSpot && (c.plazaCooldown || 0) <= 0 && Math.random() < dt * .04) {
         if (c.inside) interiors.exitNpc(n);
         c.plazaCooldown = 180; c.action = 'walk';
         routeTo(n, n.plazaSpot, 'leisure');
@@ -426,10 +423,11 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
       const stop = c.transit?.from;
       c.transitWait += dt; c.action = 'wait'; animate(n, t, false);
       if (!stop) { c.state = 'toWork'; routeTo(n, c.transit?.final || n.home, 'leisure'); return; }
-      const bus = traffic?.vehicles?.find(v => ['bus', 'guagua', 'publico'].includes(v.model?.kind) && Math.hypot(v.g.position.x - stop.x, v.g.position.z - stop.z) < 13);
-      if ((stop.busy || bus) && c.transitWait > 1.2) {
-        c.state = 'ridingBus'; c.transitT = 0; c.action = 'ride'; n.g.visible = false;
-      } else if (c.transitWait > 28) {
+      // Solo se aborda una guagua de la misma línea que está realmente en esta parada.
+      const bus = traffic?.vehicles?.find(v => busAtStop(v, stop, 12));
+      if (bus) {
+        c.transit.bus = bus; c.state = 'ridingBus'; c.transitT = 0; c.action = 'ride'; n.g.visible = false;
+      } else if (c.transitWait > 32) {
         const final = c.transit?.final || n.home; c.transit = null;
         c.state = 'leisure'; routeTo(n, final, 'leisure');
       }
@@ -437,13 +435,22 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
     }
 
     if (c.state === 'ridingBus') {
-      n.routineState = 'transporte'; c.transitT = (c.transitT || 0) + dt;
-      if (c.transitT > 16) {
-        const stop = c.transit?.to, final = c.transit?.final || n.home;
-        if (stop) n.g.position.set(stop.x + (stop.ox || 0) * 1.2, 0, stop.z + (stop.oz || 0) * 1.2);
-        n.g.visible = true; c.transit = null;
-        c.state = 'leisure'; c.action = 'walk';
+      n.routineState = 'transporte';
+      const bus = c.transit?.bus, stop = c.transit?.to, final = c.transit?.final || n.home;
+      if (!bus || !stop || !busServesStop(bus, stop)) {
+        c.transit = null; n.g.visible = true; c.state = 'leisure'; c.action = 'walk';
+        routeTo(n, final, 'leisure'); return;
+      }
+      c.transitT = (c.transitT || 0) + dt;
+      // El NPC permanece dentro hasta que el autobús llega a la parada destino.
+      if (busAtStop(bus, stop, 14)) {
+        n.g.position.set(stop.x + (stop.ox || 0) * 1.2, 0, stop.z + (stop.oz || 0) * 1.2);
+        n.g.visible = true; c.transit = null; c.state = 'leisure'; c.action = 'walk';
         routeTo(n, final, 'leisure');
+      } else if (c.transitT > 240) {
+        // Si el servicio se interrumpe, se baja en la posición actual y continúa caminando.
+        n.g.position.set(bus.g.position.x, 0, bus.g.position.z); n.g.visible = true;
+        c.transit = null; c.state = 'leisure'; c.action = 'walk'; routeTo(n, final, 'leisure');
       }
       return;
     }
@@ -607,8 +614,8 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
         const d = Math.hypot(spot.x - n.home.x, spot.z - n.home.z);
         return !best || d < best.d ? { spot, d } : best;
       }, null);
-      n.plazaSpot = plaza && plaza.d < 80 ? plaza.spot : null;
-      n.citizen = { state: 'home', path: [], pathIndex: 0, pathKind: null, stateSince: 0, idleT: 0, target: null, activity: 'rest', maxStep: 0, inside: null, insideKind: null, insidePath: [], insideIndex: 0, insideTarget: null, stationKey: null, action: 'walk', task: null, serveT: 0, lastVisits: 0, shopId: null, shopCooldown: 20 + Math.random() * 50, shopWait: 0, shopServeT: 0, lastPurchase: null, lodAcc: 0, transit: null, transitWait: 0, transitDone: false };
+      n.plazaSpot = plaza && plaza.d < 110 ? plaza.spot : null;
+      n.citizen = { state: 'home', path: [], pathIndex: 0, pathKind: null, stateSince: 0, idleT: 0, target: null, activity: 'rest', maxStep: 0, inside: null, insideKind: null, insidePath: [], insideIndex: 0, insideTarget: null, stationKey: null, action: 'walk', task: null, serveT: 0, lastVisits: 0, shopId: null, shopCooldown: 20 + Math.random() * 50, shopWait: 0, shopServeT: 0, lastPurchase: null, lodAcc: 0, transit: null, transitWait: 0, transitDone: false, plazaVisits: 0 };
       n.g.position.set(n.home.x, 0, n.home.z);
       n.g.visible = true;
       n.pause = 0;
@@ -653,6 +660,7 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
       n.citizen.shopId = d.shopId || null; n.citizen.shopCooldown = Number(d.shopCooldown) || 0;
       n.citizen.shopWait = Number(d.shopWait) || 0; n.citizen.shopServeT = Number(d.shopServeT) || 0; n.citizen.lastPurchase = d.lastPurchase || null; n.citizen.transitDone = !!d.transitDone;
       n.citizen.maxStep = 0;
+      n.citizen.plazaVisits = 0;
       n.g.position.set(Number.isFinite(d.x) ? d.x : n.home.x, 0, Number.isFinite(d.z) ? d.z : n.home.z);
       if (['toStop', 'waitingBus', 'ridingBus'].includes(n.citizen.state)) {
         n.citizen.state = 'toWork'; n.citizen.transit = null; n.g.visible = true; routeTo(n, n.work, 'toWork');
@@ -804,7 +812,7 @@ export function createCitizenSystem({ npcs, graph, shops, buildings, spawn, swin
       clock, counts, weather,
       npcs: npcs.map(n => ({
         name: n.name, occupation: n.occupation, state: n.citizen?.state, routine: n.routineState,
-        visible: n.g.visible, inside: n.citizen?.inside || null, insideKind: n.citizen?.insideKind || null, task: n.citizen?.task || null, action: n.citizen?.action || 'walk', preference: n.preference, shopId: n.citizen?.shopId || null, lastPurchase: n.citizen?.lastPurchase || null, useTransit: !!n.useTransit, transit: n.citizen?.transit ? { from: n.citizen.transit.from?.line, to: n.citizen.transit.to?.line } : null, home: n.home && [+n.home.x.toFixed(1), +n.home.z.toFixed(1)],
+        visible: n.g.visible, inside: n.citizen?.inside || null, insideKind: n.citizen?.insideKind || null, task: n.citizen?.task || null, action: n.citizen?.action || 'walk', preference: n.preference, shopId: n.citizen?.shopId || null, lastPurchase: n.citizen?.lastPurchase || null, useTransit: !!n.useTransit, usePlaza: !!n.usePlaza, plazaSpot: n.plazaSpot ? [+n.plazaSpot.x.toFixed(1), +n.plazaSpot.z.toFixed(1)] : null, transit: n.citizen?.transit ? { from: n.citizen.transit.from?.line, to: n.citizen.transit.to?.line, bus: n.citizen.transit.bus?.lineId ?? null, t: +(n.citizen.transitT || 0).toFixed(1) } : null, plazaVisits: n.citizen?.plazaVisits || 0, home: n.home && [+n.home.x.toFixed(1), +n.home.z.toFixed(1)],
         homePos: n.home && [n.home.x, n.home.z], work: n.work?.label, workPos: n.work && [n.work.x, n.work.z], path: n.citizen?.path.length || 0, index: n.citizen?.pathIndex || 0, maxStep: +(n.citizen?.maxStep || 0).toFixed(2),
         pos: [+n.g.position.x.toFixed(1), +n.g.position.z.toFixed(1)]
       })),

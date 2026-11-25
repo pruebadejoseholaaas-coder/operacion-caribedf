@@ -83,26 +83,63 @@ test('un NPC simulado entra, hace cola, compra y sale', () => {
   assert.ok(!['toShop', 'shopping', 'leavingShop'].includes(npc.citizen.state), 'no debe quedar atrapado comprando');
 });
 
-test('un NPC simulado espera, aborda y completa el viaje en guagua', () => {
+test('un NPC aborda solo la guagua de su línea y baja en la parada destino', () => {
   const shop = fakeShop('panaderia', 0, [['Pan', 20]]);
   const npc = fakeNpc('Luis', 'estudiante');
   const { interiors, business } = fakeSystems(shop);
   const stops = [
-    { x: 20, z: 0, line: 'Ruta 1', nextBus: 2, ox: 0, oz: 1, busy: null },
-    { x: 80, z: 0, line: 'Ruta 1', nextBus: 2, ox: 0, oz: 1, busy: null }
+    { name: 'Origen', x: 20, z: 0, lineId: 0, line: 'Ruta 1', node: 'n0', nextBus: 2, ox: 0, oz: 1, busy: null },
+    { name: 'Destino', x: 80, z: 0, lineId: 0, line: 'Ruta 1', node: 'n2', nextBus: 2, ox: 0, oz: 1, busy: null }
   ];
-  const traffic = { stops, vehicles: [] };
+  const wrongBus = { lineId: 1, line: 'Ruta 2', lastStop: stops[0], x: 20, z: 0, g: { position: vec(20, 0), visible: true }, model: { kind: 'bus' } };
+  const rightBus = { lineId: 0, line: 'Ruta 1', lastStop: stops[0], x: 20, z: 0, g: { position: vec(20, 0), visible: true }, model: { kind: 'bus' } };
+  const traffic = { stops, vehicles: [wrongBus] };
   const c = createCitizenSystem({ npcs: [npc], graph: fakeGraph(), shops: [shop], buildings: [], spawn: { x: 0, z: 0 }, interiors, businesses: business, traffic });
   c.initialize(14 * 3600);
   const route = c.transitRoute({ x: 20, z: 0 }, { x: 80, z: 0 });
-  assert.ok(route && route.from !== route.to, 'debe encontrar dos paradas distintas');
+  assert.ok(route && route.from !== route.to, 'debe encontrar dos paradas distintas de la misma línea');
   Object.assign(npc.citizen, { state: 'waitingBus', transit: route, transitWait: 2, transitT: 0, path: [], pathKind: null });
-  stops[0].busy = { v: {}, t: 0 };
   c.simulate(.5);
-  assert.equal(npc.citizen.state, 'ridingBus');
+  assert.equal(npc.citizen.state, 'waitingBus', 'no debe abordar una guagua de otra línea');
+
+  traffic.vehicles = [rightBus];
+  c.simulate(.5);
+  assert.equal(npc.citizen.state, 'ridingBus', 'debe abordar la guagua de su línea');
   assert.equal(npc.g.visible, false, 'el pasajero viaja oculto dentro de la guagua');
-  c.simulate(18);
-  assert.notEqual(npc.citizen.state, 'ridingBus');
+
+  rightBus.lastStop = stops[1]; rightBus.x = 80; rightBus.g.position.set(80, 0, 0);
+  c.simulate(.5);
+  assert.notEqual(npc.citizen.state, 'ridingBus', 'debe bajar al llegar a su parada');
   assert.equal(npc.g.visible, true, 'debe reaparecer en la parada destino');
   assert.equal(npc.citizen.transit, null);
+});
+
+test('sin ruta compatible el NPC vuelve a caminar en lugar de simular un viaje', () => {
+  const shop = fakeShop('panaderia', 0, [['Pan', 20]]);
+  const npc = fakeNpc('Ana', 'estudiante');
+  const { interiors, business } = fakeSystems(shop);
+  const stops = [
+    { name: 'A', x: 20, z: 0, lineId: 0, line: 'Ruta 1', node: 'n0', ox: 0, oz: 1 },
+    { name: 'B', x: 80, z: 0, lineId: 1, line: 'Ruta 2', node: 'n2', ox: 0, oz: 1 }
+  ];
+  const c = createCitizenSystem({ npcs: [npc], graph: fakeGraph(), shops: [shop], buildings: [], spawn: { x: 0, z: 0 }, interiors, businesses: business, traffic: { stops, vehicles: [] } });
+  c.initialize(14 * 3600);
+  assert.equal(c.transitRoute({ x: 20, z: 0 }, { x: 80, z: 0 }), null, 'paradas de líneas distintas no forman ruta');
+});
+
+test('sin guagua el NPC espera y luego camina, sin teletransportarse al destino', () => {
+  const shop = fakeShop('panaderia', 0, [['Pan', 20]]);
+  const npc = fakeNpc('Rosa', 'estudiante');
+  const { interiors, business } = fakeSystems(shop);
+  const stops = [
+    { name: 'Origen', x: 20, z: 0, lineId: 0, line: 'Ruta 1', node: 'n0', ox: 0, oz: 1 },
+    { name: 'Destino', x: 80, z: 0, lineId: 0, line: 'Ruta 1', node: 'n2', ox: 0, oz: 1 }
+  ];
+  const c = createCitizenSystem({ npcs: [npc], graph: fakeGraph(), shops: [shop], buildings: [], spawn: { x: 0, z: 0 }, interiors, businesses: business, traffic: { stops, vehicles: [] } });
+  c.initialize(14 * 3600);
+  const route = c.transitRoute({ x: 20, z: 0 }, { x: 80, z: 0 });
+  Object.assign(npc.citizen, { state: 'waitingBus', transit: route, transitWait: 2, transitT: 0, path: [], pathKind: null });
+  c.simulate(40);
+  assert.notEqual(npc.citizen.state, 'ridingBus');
+  assert.ok(Math.abs(npc.g.position.x - 80) > 40, 'no debe aparecer en el destino sin una guagua real');
 });

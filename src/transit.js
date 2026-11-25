@@ -30,6 +30,39 @@ export function pickDestination(stops, from, random = Math.random) {
   return options[Math.floor(random() * options.length) % options.length];
 }
 
+export function sameLine(a, b) {
+  return !!a && !!b && a !== b && a.lineId != null && a.lineId === b.lineId && a.line === b.line;
+}
+
+// Elige un par de paradas de la misma línea para un viaje caminando + guagua.
+// Si no existe un par compatible dentro de la distancia peatonal, devuelve null.
+export function planTransit(stops, from, to, maxWalk = 60) {
+  if (!Array.isArray(stops) || !from || !to) return null;
+  let best = null;
+  for (const a of stops) {
+    const walkFrom = Math.hypot(a.x - from.x, a.z - from.z);
+    if (walkFrom > maxWalk) continue;
+    for (const b of stops) {
+      if (!sameLine(a, b)) continue;
+      const walkTo = Math.hypot(b.x - to.x, b.z - to.z);
+      if (walkTo > maxWalk) continue;
+      const score = walkFrom + walkTo;
+      if (!best || score < best.score) best = { from: a, to: b, walkFrom, walkTo, score };
+    }
+  }
+  return best;
+}
+
+export function busServesStop(bus, stop) {
+  return !!bus && !!stop && bus.lineId != null && bus.lineId === stop.lineId && bus.line === stop.line;
+}
+
+export function busAtStop(bus, stop, radius = 12) {
+  if (!busServesStop(bus, stop)) return false;
+  // La distancia importa: lastStop puede quedar viejo después de que la guagua arrancó.
+  return Math.hypot((bus.x ?? bus.g?.position.x ?? 1e9) - stop.x, (bus.z ?? bus.g?.position.z ?? 1e9) - stop.z) < radius;
+}
+
 export function firstEdgeToward(graph, from, to) {
   if (!graph || !from || !to) return null;
   if (from.k === to.k) return null;
