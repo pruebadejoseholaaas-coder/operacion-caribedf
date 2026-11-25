@@ -584,7 +584,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
  trafficSystem?.collide(obj,riding?.8:.45);
  if(!riding)for(const n of npcs){if(!n.g.visible)continue;const dx=obj.x-n.g.position.x,dz=obj.z-n.g.position.z,d=Math.hypot(dx,dz);if(d<.72&&d>1e-4){obj.x+=dx/d*(.72-d);obj.z+=dz/d*(.72-d)}}
  const cor=Math.hypot(obj.x-bx,obj.z-bz);
- if(!riding&&!house?.inside()&&!interiors?.playerInside())player.g.position.y=lote?.heightAt?lote.heightAt(player.g.position.x,player.g.position.z):0;
+ if(!house?.inside()&&!interiors?.playerInside()){const th=lote?.heightAt?lote.heightAt(player.g.position.x,player.g.position.z):0;player.g.position.y=th;if(moto)moto.position.y=lote?.heightAt?lote.heightAt(moto.position.x,moto.position.z):0}
  if(riding&&cor>.001){spd*=Math.max(.15,1-cor*5);vx*=.85;vz*=.85}
  const sp=Math.hypot(vx,vz);
  if(!house?.inside())energy=Math.max(0,Math.min(100,energy-dt*(riding?.01:sp>6?.22:sp>.6?.05:0)));

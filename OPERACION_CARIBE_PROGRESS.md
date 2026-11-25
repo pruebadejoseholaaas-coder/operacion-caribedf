@@ -50,7 +50,7 @@ colisiones, mundo, tráfico, comercios, NPC y jugador. Sirve para pruebas automa
   existentes, sin sustituir ni duplicar ninguna zona anterior:
   límites `x 128..185`, `z -282..-212`.
 - Terreno de hierba con **desniveles suaves reales** (`lotHeightAt`); el jugador ajusta su altura
-  al caminar por el solar. La lógica de colisiones 2D se conserva.
+  al caminar por el solar y también la moto; la lógica de colisiones 2D se conserva.
 - Cerca perimetral con **puerta norte** de 12 m, acera de concreto junto a la carretera existente,
   zanja de drenaje con agua estancada, árbol grande, cuatro palmeras, arbustos, matas, piedras,
   postes de luz y cables.
@@ -88,7 +88,7 @@ colisiones, mundo, tráfico, comercios, NPC y jugador. Sirve para pruebas automa
 | `npm test` | **24/24 pruebas correctas**. |
 | `npm run build` | Correcto; bundle principal ≈822,42 kB (gzip ≈235,68 kB). |
 | Carga en Chromium headless | Sin `pageerror` ni errores de consola. |
-| Altura del jugador en el solar | `0.3036` m en el centro; `0` fuera. |
+| Altura del jugador y la moto en el solar | `0.3036` m en el centro; `0` fuera. |
 | Puerta del solar | Sin colisionador en el centro de la puerta. |
 | Plaza y rutinas | 3 visitas a bancos en 4 h simuladas; 0 rutas inseguras. |
 | Minimapa | Zona verde del solar y marcador de plaza presentes; sin errores. |
