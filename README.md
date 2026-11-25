@@ -2,7 +2,9 @@
 
 Juego 3D de mundo abierto, inspirado en los grandes atracos, ambientado en la República Dominicana. Se juega en el navegador y más adelante como APK de Android.
 
-> **Estado:** prototipo 0.1. Calle de la Zona Colonial, personaje 3D, peatones y motoconcho.
+> **Estado:** prototipo 0.8. Zona Colonial de Santo Domingo con calles reales (OpenStreetMap), 40 comercios explorables con **economía en RD$, stock, reposición, colas y ventas de ciudadanos**, habitantes con casa y trabajo asignados, **compras autónomas y transporte público**, **interiores funcionales de viviendas, hospital y escuela**, rutas por aceras, horarios individuales, estados de actividad y persistencia; tráfico con semáforos, pasajeros, rutas de guagua y faros; minimapa, clima dinámico, noche con farolas y ventanas iluminadas; audio procedural, casa propia, menú principal, ajustes gráficos, teléfono, inventario, encargos, trabajos por turnos, misión encadenada y reputación. Incluye pruebas automáticas y un flujo de CI para PR.
+>
+> El estado detallado y verificado de cada fase está en [`OPERACION_CARIBE_PROGRESS.md`](OPERACION_CARIBE_PROGRESS.md).
 
 ## Jugar en local
 
@@ -13,7 +15,7 @@ npm run dev
 
 Abre la dirección que muestre la terminal. Desde el celular, en la misma red Wi-Fi, usa la dirección de red que aparece.
 
-**Controles:** WASD o flechas para moverte, Shift para correr, arrastrar para girar la cámara, E para subir o bajar del motoconcho. En móvil: joystick y botones en pantalla.
+**Controles:** WASD o flechas para moverte, Shift para correr, arrastrar para girar la cámara, E para interactuar (moto, casa, viviendas de NPC, hospital, escuela, cama, nevera, cocina, cancha, misión, parada de guagua...), F para entrar a un comercio, M para abrir el mapa, I para la mochila, P para el teléfono, T para saludar, Q para usar la habilidad del rol, Esc para el menú. En móvil: joystick y botones en pantalla; toca el minimapa para abrir el mapa.
 
 ## Publicar en la web (GitHub Pages)
 
@@ -24,17 +26,45 @@ Abre la dirección que muestre la terminal. Desde el celular, en la misma red Wi
 ## Hoja de ruta
 
 - [x] Fase 1: prototipo web (calle, personaje, peatones, vehículo)
-- [ ] Fase 2: sistema de roles (Programador, Planificador, Conductor...)
-- [ ] Fase 3: primer asalto con motor de tramas y giros aleatorios
-- [ ] Fase 4: modo online libre (multijugador, sin misiones)
-- [ ] Fase 5: APK con Capacitor
-- [ ] Fase 6: expansión (más regiones de RD, el Caribe, otros países)
+- [x] Ciudad real (OpenStreetMap), 40 comercios, tráfico con semáforos y minimapa
+- [x] Casa del jugador con interior, teléfono, inventario y encargos de entrega
+- [x] Transporte público con pasajeros que esperan, suben y bajan
+- [x] Trabajos por turnos (colmado, reparto, taller) con reputación
+- [x] Interiores de comercios con clientes que entran, compran y salen
+- [x] Habitantes autónomos: casa y trabajo asignados, rutas por aceras, horarios, estados y persistencia
+- [x] Interiores de viviendas de NPC, hospital y escuela; puestos de trabajo dentro de comercios
+- [x] Economía de comercios en RD$: stock, reposición, colas, ventas de ciudadanos y persistencia
+- [x] Habitantes que compran y usan guaguas; rutas de transporte, paradas y viaje simple del jugador
+- [x] Optimización de NPC por distancia (LOD), pruebas unitarias y workflow de CI para PR
+- [x] Animaciones de caminar, entrar, sentarse, comer, trabajar, atender y dormir
+- [x] Misión encadenada «El recado de Doña Rosa»
+- [x] Audio procedural, noche, lluvia, nubes, viento y radio
+- [x] Menú principal, ajustes gráficos, volumen, FPS y guardado/carga
+- [x] Cancha de baloncesto y actividad recreativa
+- [ ] Historias de más personajes y eventos de barrio
+- [ ] Pruebas en Android físico
+- [ ] Fase 2 pulida: colas de clientes y diálogos encadenados
+- [ ] Fase 1 ampliada: más variedad arquitectónica y mobiliario urbano
+- [ ] Fase 3 ampliada: estacionamientos dedicados y taxi/público
+- [ ] Fase 8: APK con Capacitor, LOD/texturas y prueba en dispositivo real
 
 ## Estructura
 
 ```
-index.html        Interfaz (HUD, joystick)
-src/main.js       Lógica del juego
+index.html        Interfaz (HUD, joystick, minimapa)
+src/main.js       Bucle principal y jugador
+src/world.js      Carga del mapa real por sectores
+src/traffic.js    Grafo de calles, tráfico y semáforos
+src/businesses.js 40 comercios y economía
+src/minimap.js    Minimapa y mapa completo
+src/house.js      Casa del jugador e interior
+src/ambience.js   Farolas, ventanas, charcos, nubes y viento
+src/audio.js      Audio procedural, radio y motor
+src/menu.js       Menú principal, ajustes y créditos
+src/missions.js   Misión encadenada de Doña Rosa
+src/citizens.js   Habitantes autónomos, rutas, horarios y persistencia
+src/interiors.js  Viviendas de NPC, hospital, escuela y puestos de comercio
+src/ui.js         Teléfono, mochila, avisos y HUD
 src/style.css     Estilos
 .github/          Publicación automática
 ```

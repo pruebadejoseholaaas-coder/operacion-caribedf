@@ -1,4 +1,5 @@
-// Primera fase de la economía urbana dominicana: 10 comercios con interiores y actividad.
+// Economía urbana dominicana: 40 comercios con interiores, clientes y personal real.
+import { shopPreference, demandAt, queueWorld, saleCost, productIndexFor } from './economy.js';
 const CATALOG = [
  {id:'colmado',name:'Colmado El Buen Vecino',kind:'COLMADO',open:6,close:23,wall:0x78b982,trim:0x176b43,task:'organiza productos',products:[['Arroz (libra)',35,0xe8dfc8],['Habichuelas',65,0x8b4a2d],['Aceite',95,0xe4b93c],['Jugo',45,0xe76f51]],detail:'Colmado de barrio con estantes surtidos, neveras, botellones de agua, sacos y sillas plásticas'},
  {id:'ventorrillo',name:'Ventorrillo Doña Nena',kind:'VENTORRILLO',open:6,close:21,wall:0xf0c9a0,trim:0x2a9d8f,task:'atiende el mostrador',products:[['Plátanos',20,0x8da83c],['Huevos',12,0xf0e5ca],['Leche',75,0xf1f1e9],['Galletas',25,0xc99b62]],detail:'Mostrador frontal, zinc, cajas y mercancía básica'},
@@ -43,52 +44,100 @@ const CATALOG = [
  {id:'taller-autos',name:'Auto Servicio La 27',kind:'TALLER MECÁNICO AUTOMOTRIZ',open:7,close:18,wall:0xc3c9cc,trim:0x3d596b,task:'diagnostica y repara vehículos',products:[['Diagnóstico básico',650,0x6d8794],['Cambio de aceite',1450,0x9b7654],['Revisión de frenos',1100,0x59636a],['Alineación',1250,0x8da0a8]],detail:'Bahía para vehículos, gato hidráulico, elevador, herramientas, compresor y mostrador de piezas'}
 ];
 
-const SITES = [
- [-77.7133,-35.8843,-.1739,-.9848,1],
- [66.6292,91.1581,.1306,.9914,1],
- [49.5823,97.6675,.9454,-.3260,1],
- [81.9965,89.1337,.1306,.9914,-1],
- [98.3043,81.1439,.9491,-.3149,1],
- [36.1573,125.1037,.1823,.9832,-1],
- [-137.0011,-58.1944,-.8687,.4954,-1],
- [109.086,102.4743,-.1624,-.9867,-1],
- [55.199,134.8665,.9757,-.2193,-1],
- [75.2938,132.1746,.1756,.9845,1],
- [-21.4617,-182.5441,.0948,.9955,1],
- [90.5529,129.4523,.1756,.9845,-1],
- [104.8089,124.3409,.9815,-.1916,-1],
- [188.2442,-44.9655,.9945,-.1049,-1],
- [40.5545,175.1721,.1033,.9947,-1],
- [-73.5309,-213.6123,.2598,-.9657,1],
- [-43.9319,-225.6039,.9997,.0237,1],
- [140.4154,-188.3196,.9901,.1407,1],
- [-150.3262,-173.2323,.962,-.2731,1],
- [-94.7752,-219.3287,.2598,-.9657,-1],
- [-118.4,42.6,.98,.18,1],
- [-112.2,119.8,.12,.99,-1],
- [-8.5,154.2,.96,-.28,1],
- [132.4,72.6,.21,.98,-1],
- [165.2,12.8,.99,.1,1],
- [-184.3,22.5,.94,-.34,-1],
- [4.8,-142.5,.18,.98,1],
- [154.6,-112.2,.97,.22,-1],
- [-190.4,-92.7,.24,-.97,1],
- [12.6,214.3,.99,.05,-1],
+// Coloca los comercios en solares libres junto a la vía, mirando hacia la calle.
+// Antes había 40 coordenadas fijas y 16 caían dentro de edificios del mapa real.
+function placeShops(world, count, avoid = []) {
+  const roads = world.roads || [], buildings = world.buildings || [];
+  const spawn = world.spawn || [0, 0];
+  const W = 8.2, D = 6.6, MIN_GAP = 20;
+  const insidePoly = (x, z, p) => {
+    let ins = false;
+    for (let i = 0, j = p.length - 2; i < p.length; j = i, i += 2) {
+      const xi = p[i], zi = p[i + 1], xj = p[j], zj = p[j + 1];
+      if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / ((zj - zi) || 1e-6) + xi) ins = !ins;
+    }
+    return ins;
+  };
+  const segCross = (a, b, c, d) => {
+    const rx = b[0] - a[0], rz = b[1] - a[1], sx = d[0] - c[0], sz = d[1] - c[1];
+    const den = rx * sz - rz * sx;
+    if (Math.abs(den) < 1e-9) return false;
+    const t = ((c[0] - a[0]) * sz - (c[1] - a[1]) * sx) / den;
+    const u = ((c[0] - a[0]) * rz - (c[1] - a[1]) * rx) / den;
+    return t > 0 && t < 1 && u > 0 && u < 1;
+  };
+  const overlaps = (rect, poly) => {
+    // Muestreo del interior del solar: un simple test de esquinas deja pasar
+    // solares metidos en patios interiores de edificios con forma de U.
+    let rx0 = Infinity, rx1 = -Infinity, rz0 = Infinity, rz1 = -Infinity;
+    for (const p of rect) { rx0 = Math.min(rx0, p[0]); rx1 = Math.max(rx1, p[0]); rz0 = Math.min(rz0, p[1]); rz1 = Math.max(rz1, p[1]); }
+    for (let i = 0; i <= 4; i++) for (let j = 0; j <= 4; j++) {
+      const x = rx0 + (rx1 - rx0) * i / 4, z = rz0 + (rz1 - rz0) * j / 4;
+      if (insidePoly(x, z, poly)) return true;
+    }
+    for (let i = 0; i < poly.length; i += 2) {
+      if (poly[i] > rx0 && poly[i] < rx1 && poly[i + 1] > rz0 && poly[i + 1] < rz1) return true;
+    }
+    for (let i = 0; i < rect.length; i++) {
+      const a = rect[i], b = rect[(i + 1) % rect.length];
+      for (let k = 0; k < poly.length - 2; k += 2) {
+        if (segCross(a, b, [poly[k], poly[k + 1]], [poly[k + 2], poly[k + 3]])) return true;
+      }
+    }
+    return false;
+  };
+  const pathClear = (x0, z0, x1, z1) => {
+    for (let t = 0; t <= 1; t += .07) {
+      const x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t;
+      if (buildings.some(b => insidePoly(x, z, b.poly))) return false;
+    }
+    return true;
+  };
+  const slots = [];
+  for (const r of roads) {
+    if (r.width < 6) continue;
+    const p = r.points;
+    for (let i = 0; i + 3 < p.length; i += 2) {
+      const ax = p[i], az = p[i + 1], bx = p[i + 2], bz = p[i + 3];
+      const len = Math.hypot(bx - ax, bz - az);
+      if (len < 10) continue;
+      const dx = (bx - ax) / len, dz = (bz - az) / len, nx = -dz, nz = dx;
+      for (let s = 5; s < len - 5; s += 7) {
+        const px = ax + dx * s, pz = az + dz * s;
+        for (const side of [1, -1]) {
+          const off = r.width / 2 + 2.2 + D / 2;
+          const cx = px + nx * side * off, cz = pz + nz * side * off;
+          const dist = Math.hypot(cx - spawn[0], cz - spawn[1]);
+          if (dist < 45 || dist > 340) continue;
+          if (slots.some(o => Math.hypot(o.x - cx, o.z - cz) < MIN_GAP)) continue;
+          if (avoid.some(o => Math.hypot(o.x - cx, o.z - cz) < 16)) continue;
+          const rect = [[-1, -1], [-1, 1], [1, 1], [1, -1]].map(([a, b]) => [
+            cx + dx * a * W / 2 + nx * side * b * D / 2,
+            cz + dz * a * W / 2 + nz * side * b * D / 2
+          ]);
+          if (buildings.some(b => overlaps(rect, b.poly))) continue;
+          const frontX = cx - nx * side * D / 2, frontZ = cz - nz * side * D / 2;
+          if (!pathClear(frontX, frontZ, px, pz)) continue;
+          slots.push({ x: cx, z: cz, rot: Math.atan2(dz * side, -dx * side), dist });
+        }
+      }
+    }
+  }
+  slots.sort((a, b) => a.dist - b.dist);
+  const near = slots.filter(s => s.dist < 180).slice(0, 16);
+  const rest = slots.filter(s => s.dist >= 180);
+  const step = Math.max(1, Math.floor(rest.length / Math.max(1, count - near.length)));
+  const chosen = near.slice();
+  for (let i = 0; i < rest.length && chosen.length < count; i += step) chosen.push(rest[i]);
+  for (let i = 0; chosen.length < count && i < slots.length; i++) if (!chosen.includes(slots[i])) chosen.push(slots[i]);
+  return chosen;
+}
 
- [-215.9,245.1,-8.2,-34.7,-1],
- [241.6,190.8,-5.1,-34.2,1],
- [-161,257.5,80.5,-22.4,1],
- [197,233.6,83.7,-32.9,1],
- [-225.8,201.3,-11.7,-52.7,-1],
- [237.1,161.1,-3.8,-25.3,1],
- [-241.6,135.2,-17.7,-69.7,-1],
- [136.3,257.6,37.7,-15.2,1],
- [254.5,-229.2,-12.2,24.1,-1],
- [52.6,-34.1,94.1,-13.9,-1]
-];
+const FOOD = /plato|empanada|yaniqueque|tostones|quipe|pastelito|jugo|chinola|lechosa|tamarindo|limón|pan|bizcocho|galleta|dulce|leche|huevo|plátano|aguacate|yuca|tomate|pollo|carne|cerdo|chuleta|longaniza|pescado|camarón|filete|calamar|arroz|habichuela|queso|agua|fruta|vegetal/i;
 
-export function createBusinessSystem(T, scene, colliders) {
+export function createBusinessSystem(T, scene, colliders, world, avoid = []) {
  const shops=[], matCache=new Map();
+ const W=8.2,D=6.6;
  const material=c=>{if(!matCache.has(c))matCache.set(c,new T.MeshLambertMaterial({color:c}));return matCache.get(c)};
  const cube=(parent,w,h,d,color,x,y,z)=>{const m=new T.Mesh(new T.BoxGeometry(w,h,d),material(color));m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m};
  const panel=document.getElementById('business-panel');
@@ -97,11 +146,12 @@ export function createBusinessSystem(T, scene, colliders) {
  const products=document.getElementById('business-products');
  const close=document.getElementById('business-close');
  const hud=document.getElementById('business-hud');
- let active=null;
- let economy={cash:2500,inventory:{}};
- try{const old=JSON.parse(localStorage.getItem('operacion-caribe-economy-v1')||'null');if(old&&Number.isFinite(old.cash))economy={cash:old.cash,inventory:old.inventory||{}}}catch{}
- const save=()=>{try{localStorage.setItem('operacion-caribe-economy-v1',JSON.stringify(economy))}catch{}};
+ let active=null,insideShop=null;
+ let economy={cash:2500,inventory:{}},savedShops=null;
+ try{const old=JSON.parse(localStorage.getItem('operacion-caribe-economy-v1')||'null');if(old&&Number.isFinite(old.cash)){economy={cash:old.cash,inventory:old.inventory||{}};savedShops=old.shops||null}}catch{}
+ const save=()=>{try{const data={...economy,shops:Object.fromEntries(shops.map(s=>[s.data.id,{stock:s.stock,sales:s.sales,visits:s.visits,revenue:s.revenue,costs:s.costs,profit:s.profit,citizenSales:s.citizenSales}]))};localStorage.setItem('operacion-caribe-economy-v1',JSON.stringify(data))}catch{}};
  const money=n=>'RD$ '+Math.round(n).toLocaleString('es-DO');
+ const shopLight=new T.PointLight(0xffe0a8,0,15,2);scene.add(shopLight);
  // Acabado interior compartido para que los comercios se distingan también por dentro.
  const floorCanvas=document.createElement('canvas');floorCanvas.width=floorCanvas.height=128;
  const floorCtx=floorCanvas.getContext('2d');
@@ -114,10 +164,10 @@ export function createBusinessSystem(T, scene, colliders) {
  const floorMaterial=new T.MeshLambertMaterial({map:floorTexture});
  const lampMaterial=new T.MeshBasicMaterial({color:0xffe8ad});
  function signTexture(text,color){const c=document.createElement('canvas');c.width=512;c.height=112;const x=c.getContext('2d');x.fillStyle='#'+color.toString(16).padStart(6,'0');x.fillRect(0,0,512,112);x.strokeStyle='#fff0c9';x.lineWidth=7;x.strokeRect(6,6,500,100);x.fillStyle='#fff';x.font='bold 34px Trebuchet MS';x.textAlign='center';x.textBaseline='middle';x.fillText(text,256,56,470);return new T.CanvasTexture(c)}
- function person(parent,shirt,skin=0x9b684b){const g=new T.Group();parent.add(g);cube(g,.58,.82,.34,shirt,0,1.2,0);const head=new T.Mesh(new T.SphereGeometry(.22,10,8),material(skin));head.position.y=1.82;g.add(head);cube(g,.18,.55,.2,0x26364a,-.16,.5,0);cube(g,.18,.55,.2,0x26364a,.16,.5,0);const a=cube(g,.14,.62,.14,shirt,-.38,1.28,0),b=cube(g,.14,.62,.14,shirt,.38,1.28,0);return{g,a,b,phase:Math.random()*6}}
- function transformedBoxCollider(group,w,h,d,x,y,z){const c=Math.cos(group.rotation.y),s=Math.sin(group.rotation.y),corners=[[-w/2,-d/2],[w/2,-d/2],[w/2,d/2],[-w/2,d/2]].map(([lx,lz])=>[group.position.x+lx*c+lz*s+x,group.position.z-lx*s+lz*c+z]);const xs=corners.map(p=>p[0]),zs=corners.map(p=>p[1]),poly=corners.flat();colliders.push({x0:Math.min(...xs),x1:Math.max(...xs),z0:Math.min(...zs),z1:Math.max(...zs),poly})}
- function build(data,index){
-  const [x,z,dx,dz,side]=SITES[index],g=new T.Group();g.position.set(x,0,z);g.rotation.y=Math.atan2(-dx*side,-dz*side);scene.add(g);
+ function person(parent,shirt,skin=0x9b684b){const g=new T.Group();parent.add(g);cube(g,.58,.82,.34,shirt,0,1.2,0);const head=new T.Mesh(new T.SphereGeometry(.22,10,8),material(skin));head.position.y=1.82;g.add(head);const l=cube(g,.18,.55,.2,0x26364a,-.16,.5,0),r=cube(g,.18,.55,.2,0x26364a,.16,.5,0);const a=cube(g,.14,.62,.14,shirt,-.38,1.28,0),b=cube(g,.14,.62,.14,shirt,.38,1.28,0);return{g,a,b,l,r,phase:Math.random()*6}}
+ function transformedBoxCollider(group,w,h,d,x,y,z){const c=Math.cos(group.rotation.y),s=Math.sin(group.rotation.y),corners=[[-w/2,-d/2],[w/2,-d/2],[w/2,d/2],[-w/2,d/2]].map(([lx,lz])=>{const ax=lx+x,az=lz+z;return[group.position.x+ax*c+az*s,group.position.z-ax*s+az*c]});const xs=corners.map(p=>p[0]),zs=corners.map(p=>p[1]),poly=corners.flat();colliders.push({x0:Math.min(...xs),x1:Math.max(...xs),z0:Math.min(...zs),z1:Math.max(...zs),poly})}
+ function build(data,site,index){
+  const {x,z,rot}=site,g=new T.Group();g.position.set(x,0,z);g.rotation.y=rot;scene.add(g);
   const W=8.2,D=6.6,wall=.22,front=D/2;
   cube(g,W,.16,D,0x9c8c78,0,.08,0);
   const tiledFloor=new T.Mesh(new T.PlaneGeometry(W-.3,D-.3),floorMaterial);
@@ -674,29 +724,133 @@ export function createBusinessSystem(T, scene, colliders) {
   // Pequeñas diferencias de fachada: toldos, aleros y marquesinas de barrio.
   if(['fruteria','vivero','floristeria','agropecuaria'].includes(data.id)){cube(g,W+.25,.16,.9,data.trim,0,2.45,front+.38);for(let i=0;i<5;i++)cube(g,1.62,.025,.92,i%2?0xf4e8d2:data.trim,-3.3+i*1.65,2.55,front+.38)}
   if(['hielo','agua','pollera'].includes(data.id)){cube(g,W,.18,.55,0xdcebef,0,2.98,front+.18);cube(g,.18,2.5,.18,data.trim,-W/2+.2,1.35,front+.2);cube(g,.18,2.5,.18,data.trim,W/2-.2,1.35,front+.2)}
-  const worker=person(g,data.trim),customer=person(g,0x3b6e87,0xb57b58);customer.g.position.set(0,0,2.35);
+  cube(g,W+.2,.18,D+.2,data.trim,0,2.9,0);
+  cube(g,1.6,.03,1.1,0xb04a3a,0,.19,front+.25);
+  const worker=person(g,data.trim);
+  const visitors=[];
+  for(let i=0;i<2;i++){
+   const v=person(g,[0x3b6e87,0xc85a4a,0x4f8b6a,0x9b6a3f][i]);
+   v.g.position.set(0,0,front+2.6);v.g.visible=false;
+   v.state='idle';v.t=0;v.tx=0;v.tz=0;v.sx=0;v.walk=0;
+   visitors.push(v);
+  }
   transformedBoxCollider(g,W,.2,.22,0,0,-D/2);
   transformedBoxCollider(g,.22,.2,D,-W/2,0,0);transformedBoxCollider(g,.22,.2,D,W/2,0,0);
+  // Mostrador, estantería y neveras sólidos; la entrada central queda libre.
+  transformedBoxCollider(g,2.3,.9,.8,0,0,.75);
+  transformedBoxCollider(g,2.2,.9,.9,-2.65,0,-2.4);
+  transformedBoxCollider(g,1.0,.9,2.4,2.6,0,-1.3);
+  transformedBoxCollider(g,1.75,.2,.15,-2.45,0,front-.12);
+  transformedBoxCollider(g,1.75,.2,.15,2.45,0,front-.12);
   // El mostrador divide el área, pero deja un paso frontal para entrar.
   const hours={open:data.open,close:data.close};
-  return{data,g,worker,customer,phase:index*.8,clientPhase:index*.37,open:true,hours,stock:data.products.map(p=>12),sales:0};
+  const register=cube(g,.55,.3,.38,0x252b2e,.55,1.33,.75);
+  cube(g,.42,.15,.02,0x8ff0c2,.55,1.38,.56);
+  return{data,g,worker,visitors,phase:index*.8,visitorT:2+Math.random()*10,open:true,hours,stock:data.products.map(p=>12),sales:0,visits:0,revenue:0,costs:0,profit:0,citizenSales:0,preference:shopPreference(data),queue:[],actualStaff:0,register,registerPulse:0,restockT:28+Math.random()*35};
  }
- CATALOG.forEach((d,i)=>shops.push(build(d,i)));
- function setPanel(shop){active=shop;if(!panel)return;title.textContent=shop.data.name;info.textContent=shop.open?shop.data.detail+' · Abierto · '+money(economy.cash):'Este negocio está cerrado ahora.';products.replaceChildren();shop.data.products.forEach((p,i)=>{const b=document.createElement('button');b.className='business-buy';b.textContent=p[0]+' · '+money(p[1])+' · '+shop.stock[i]+' disp.';b.disabled=!shop.open||shop.stock[i]<=0||economy.cash<p[1];b.addEventListener('click',()=>{if(!active||!active.open||active.stock[i]<=0||economy.cash<p[1])return;economy.cash-=p[1];active.stock[i]--;economy.inventory[p[0]]=(economy.inventory[p[0]]||0)+1;active.sales++;save();setPanel(active)});products.appendChild(b)});panel.style.display='flex'}
+ const sites=placeShops(world,CATALOG.length,avoid);
+ CATALOG.forEach((d,i)=>shops.push(build(d,sites[i]||sites[sites.length-1],i)));
+ if(savedShops)for(const s of shops){const st=savedShops[s.data.id];if(!st)continue;if(Array.isArray(st.stock))s.stock=st.stock.map(v=>Math.max(0,v|0)).slice(0,s.data.products.length);s.sales=Math.max(0,st.sales|0);s.visits=Math.max(0,st.visits|0);s.revenue=Math.max(0,Number(st.revenue)||0);s.costs=Math.max(0,Number(st.costs)||0);s.profit=Math.max(0,Number(st.profit)||0);s.citizenSales=Math.max(0,st.citizenSales|0)}
+ function recordSale(shop,index,buyer='visitor'){
+  if(!shop||!shop.data.products[index]||shop.stock[index]<=0)return null;
+  const product=shop.data.products[index];
+  shop.stock[index]--;
+  shop.sales++;shop.visits++;shop.revenue+=product[1];shop.costs+=saleCost(product[1]);shop.profit=shop.revenue-shop.costs;shop.registerPulse=1;shop.lastBuyer=buyer;if(buyer==='citizen')shop.citizenSales=(shop.citizenSales||0)+1;
+  save();return {name:product[0],price:product[1],index};
+ }
+ function joinQueue(shop,npc){
+  if(!shop||!shop.open||!npc)return null;
+  if(shop.queue.some(q=>q.npc===npc)){const q=shop.queue.find(q=>q.npc===npc);return {index:shop.queue.indexOf(q),spot:queueWorld(shop,shop.queue.indexOf(q))}}
+  if(shop.queue.length>=6)return null;
+  const index=shop.queue.length;shop.queue.push({npc,index,t:0});
+  return {index,spot:queueWorld(shop,index)};
+ }
+ function leaveQueue(shop,npc){if(!shop)return;const i=shop.queue.findIndex(q=>q.npc===npc);if(i>=0)shop.queue.splice(i,1)}
+ function queueIndex(shop,npc){return shop?shop.queue.findIndex(q=>q.npc===npc):-1}
+ function isFirst(shop,npc){return !!shop&&shop.queue[0]?.npc===npc}
+ function serveCustomer(shop,npc){
+  if(!shop||!shop.open||!isFirst(shop,npc))return null;
+  const index=productIndexFor(shop.stock);
+  if(index<0)return null;
+  return recordSale(shop,index,'citizen');
+ }
+ function shopById(id){return shops.find(s=>s.data.id===id)||null}
+ function availableFor(preference){
+  return shops.filter(s=>s.open&&s.preference===preference&&s.stock.some(v=>v>0));
+ }
+ function setPanel(shop){active=shop;if(!panel)return;title.textContent=shop.data.name;info.textContent=shop.open?shop.data.detail+' · Abierto · '+money(economy.cash):'Este negocio está cerrado ahora.';products.replaceChildren();shop.data.products.forEach((p,i)=>{const b=document.createElement('button');b.className='business-buy';b.textContent=p[0]+' · '+money(p[1])+' · '+shop.stock[i]+' disp.';b.disabled=!shop.open||shop.stock[i]<=0||economy.cash<p[1];b.addEventListener('click',()=>{if(!active||!active.open||active.stock[i]<=0||economy.cash<p[1])return;economy.cash-=p[1];recordSale(active,i,'player');economy.inventory[p[0]]=(economy.inventory[p[0]]||0)+1;save();setPanel(active)});products.appendChild(b)});panel.style.display='flex'}
  function closePanel(){active=null;if(panel)panel.style.display='none'}
  close?.addEventListener('click',closePanel);
  function interact(pos){let nearest=null,best=9;for(const s of shops){const d=Math.hypot(pos.x-s.g.position.x,pos.z-s.g.position.z);if(d<best){best=d;nearest=s}}if(nearest){setPanel(nearest);return true}return false}
  function update(dt,pos,clock){
+  insideShop=null;
   const hour=Math.floor(clock/3600),minute=Math.floor(clock%3600/60),time=hour+minute/60;
   let nearbyShop=null,nearDistance=9;
+  const demand=demandAt(time);
   for(const s of shops){const {data}=s;const distance=Math.hypot(pos.x-s.g.position.x,pos.z-s.g.position.z);if(distance<nearDistance){nearDistance=distance;nearbyShop=s}s.open=data.close<data.open?(time>=data.open||time<data.close):(time>=data.open&&time<data.close);s.phase+=dt;
-   s.g.visible=distance<260;s.worker.g.visible=s.open&&distance<85;s.customer.g.visible=s.open&&distance<85&&Math.sin(s.phase*.23)>.15;
+   s.restockT-=dt;
+   if(s.restockT<=0){s.restockT=50+Math.random()*45;let restocked=false;for(let i=0;i<s.stock.length;i++)if(s.stock[i]<12){s.stock[i]++;s.costs+=Math.round(s.data.products[i][1]*.18);restocked=true}if(restocked){s.profit=s.revenue-s.costs;save()}}
+   if(s.registerPulse>0){s.registerPulse=Math.max(0,s.registerPulse-dt*2);s.register.scale.setScalar(1+s.registerPulse*.22)}
+   s.g.visible=distance<260;s.worker.g.visible=s.open&&distance<85&&!s.actualStaff;
    const stations=[[-2.4,-.65],[0,-.65],[2.3,-.65]],target=stations[Math.floor(s.phase/5)%stations.length];s.worker.g.position.x+=(target[0]-s.worker.g.position.x)*(1-Math.exp(-dt*1.7));s.worker.g.position.z+=(target[1]-s.worker.g.position.z)*(1-Math.exp(-dt*1.7));s.worker.a.rotation.x=Math.sin(s.phase*3)*.55;s.worker.b.rotation.x=-Math.sin(s.phase*3)*.55;
-   const walk=(s.clientPhase+=dt*.12)%1;s.customer.g.position.x=Math.sin(walk*Math.PI*2)*.8;s.customer.g.position.z=2.35-Math.sin(walk*Math.PI)*.8;s.customer.a.rotation.x=Math.sin(s.phase*2)*.3;s.customer.b.rotation.x=-s.customer.a.rotation.x;
+   // Clientes: entran desde la acera, compran en el mostrador y salen.
+   if(distance<120){
+    s.visitorT-=dt;
+    if(s.open&&!s.actualStaff&&!s.queue.length&&s.visitorT<=0&&s.visitors.some(v=>v.state==='idle')){
+     const v=s.visitors.find(v=>v.state==='idle');
+     v.state='entering';v.sx=(Math.random()*2-1)*1.2;v.tx=(Math.random()*2-1)*1.0;v.tz=1.55;v.t=0;v.walk=0;
+     v.g.position.set(v.sx,0,D/2+2.6);v.g.rotation.y=Math.PI;v.g.visible=true;
+     s.visitorT=(8+Math.random()*12)*demandAt(time,s.preference);
+    }
+    for(const v of s.visitors){
+     if(v.state==='idle'){v.g.visible=false;continue}
+     if(s.queue.length&&v.state==='entering'){v.state='leaving';}
+     v.g.visible=true;
+     const tx=v.state==='leaving'?v.sx:v.tx,tz=v.state==='leaving'?D/2+2.8:v.tz;
+     const dx=tx-v.g.position.x,dz=tz-v.g.position.z,dist=Math.hypot(dx,dz);
+     if(v.state==='buying'){
+      v.t-=dt;
+      v.a.rotation.x=-.95+Math.sin(s.phase*8)*.15;v.b.rotation.x=-.35;
+      if(v.t<=0){
+       const i=productIndexFor(s.stock);
+       if(i>=0)recordSale(s,i,'visitor');
+       v.state='leaving';v.g.rotation.y=0;
+      }
+     } else if(dist>.08){
+      const step=Math.min(dist,1.15*dt);
+      v.g.position.x+=dx/dist*step;v.g.position.z+=dz/dist*step;
+      v.g.rotation.y=Math.atan2(dx,dz);
+      v.walk+=dt*7;
+      v.a.rotation.x=Math.sin(v.walk)*.45;v.b.rotation.x=-Math.sin(v.walk)*.45;
+      v.l.rotation.x=Math.sin(v.walk)*.5;v.r.rotation.x=-Math.sin(v.walk)*.5;
+     } else if(v.state==='entering'){
+      v.state='buying';v.t=1.8+Math.random()*1.5;v.g.rotation.y=Math.PI;
+      v.a.rotation.x=v.b.rotation.x=0;v.l.rotation.x=v.r.rotation.x=0;
+     } else if(v.state==='leaving'){
+      v.state='idle';v.g.visible=false;
+     }
+    }
+   } else for(const v of s.visitors)v.g.visible=false;
+   // Una sola luz dinámica para el comercio en el que está el jugador.
+   const c=Math.cos(s.g.rotation.y),sn=Math.sin(s.g.rotation.y),dx=pos.x-s.g.position.x,dz=pos.z-s.g.position.z;
+   const lx=dx*c-dz*sn,lz=dx*sn+dz*c;
+   if(Math.abs(lx)<3.75&&Math.abs(lz)<2.95&&distance<9){insideShop=s;shopLight.position.set(s.g.position.x,2.25,s.g.position.z);shopLight.intensity=1.25}
    s.g.visible=distance<260;
   }
+  if(!insideShop)shopLight.intensity=0;
   if(hud){hud.textContent='Comercios: '+shops.filter(s=>s.open).length+'/'+shops.length+' abiertos · '+money(economy.cash)+(nearbyShop?' · F: '+nearbyShop.data.kind:'')}
-  if(active&&info){info.textContent=(active.open?'Abierto':'Cerrado')+' · '+active.data.detail+' · Empleado: '+active.data.task+' · Ventas simuladas: '+active.sales+' · '+money(economy.cash);if(!active.open)products.querySelectorAll('button').forEach(b=>b.disabled=true)}
+  if(active&&info){info.textContent=(active.open?'Abierto':'Cerrado')+' · '+active.data.detail+' · Empleado: '+active.data.task+' · Clientes: '+active.visits+' · Ventas: '+active.sales+' · Ingresos: '+money(active.revenue)+' · Costos: '+money(active.costs)+' · Ganancia: '+money(active.profit)+' · Cola: '+active.queue.length+' · Ciudadanos: '+(active.citizenSales||0)+' · '+money(economy.cash);if(!active.open)products.querySelectorAll('button').forEach(b=>b.disabled=true)}
  }
- return{update,interact,close:closePanel,shops};
+ function addCash(n){economy.cash=Math.max(0,economy.cash+n);save()}
+ function inventory(){return economy.inventory}
+ function consumeItem(name,n=1){const q=economy.inventory[name]||0;if(q<n)return false;if(q===n)delete economy.inventory[name];else economy.inventory[name]=q-n;save();return true}
+ function consume(name){
+  if(!economy.inventory[name]||economy.inventory[name]<=0)return false;
+  economy.inventory[name]--;if(economy.inventory[name]<=0)delete economy.inventory[name];save();return true;
+ }
+ function consumeFood(){
+  const name=Object.keys(economy.inventory).find(n=>FOOD.test(n));
+  if(!name)return null;consume(name);return name;
+ }
+ return{update,interact,close:closePanel,shops,shopById,joinQueue,leaveQueue,queueIndex,isFirst,serveCustomer,recordSale,availableFor,getInventory:()=>economy.inventory,getCash:()=>economy.cash,addCash,consume,consumeFood,consumeItem,inventory,isFood:n=>FOOD.test(n),insideShop:()=>insideShop};
 }

@@ -1,6 +1,7 @@
 // Cargador del mundo real (OpenStreetMap): calles con aceras y marcas, edificios con fachada, árboles, carga por chunks.
 const CS = 200;
 const PAL = [0xf2c14e, 0xe76f51, 0x2a9d8f, 0xf4a261, 0xe9c46a, 0xf1e9d8, 0x6ec1e4, 0xd97aa6, 0xb7d968];
+const windUniform = { value: 0 };
 
 export async function loadWorld(T, scene, colliders) {
   let d;
@@ -10,8 +11,21 @@ export async function loadWorld(T, scene, colliders) {
     d = await r.json();
   } catch { return null; }
 
-  const cells = new Map(), loaded = new Map(), mats = {};
+  const cells = new Map(), loaded = new Map(), mats = {}, lampHeads = new Map();
   const mat = (c, o = {}) => mats[c + JSON.stringify(o)] || (mats[c + JSON.stringify(o)] = new T.MeshLambertMaterial({ color: c, ...o }));
+  const windMat = c => {
+    const m = new T.MeshLambertMaterial({ color: c });
+    m.onBeforeCompile = sh => {
+      sh.uniforms.uWind = windUniform;
+      sh.vertexShader = 'uniform float uWind;\n' + sh.vertexShader.replace(
+        '#include <begin_vertex>',
+        '#include <begin_vertex>\n' +
+        'transformed.x += sin(uWind * 1.3 + instanceMatrix[3].x * .15 + instanceMatrix[3].z * .15) * .055;\n' +
+        'transformed.z += cos(uWind * 1.1 + instanceMatrix[3].x * .12) * .035;'
+      );
+    };
+    return m;
+  };
 
   // Fachadas con estilos distintos. La clasificación se calcula por geometría del sector,
   // porque el archivo cartográfico no contiene etiquetas de uso del suelo.
@@ -230,7 +244,7 @@ export async function loadWorld(T, scene, colliders) {
     strip(curb, 0x77766f, .12, -3, grp);
     if (trees.length) {
       const n = trees.length / 2, o = new T.Object3D();
-      const tr = new T.InstancedMesh(trunkG, mat(0x7a5a3a), n), cr = new T.InstancedMesh(crownG, mat(0x3f8f3a), n);
+      const tr = new T.InstancedMesh(trunkG, mat(0x7a5a3a), n), cr = new T.InstancedMesh(crownG, windMat(0x3f8f3a), n);
       for (let i = 0; i < n; i++) {
         o.position.set(trees[i * 2], 0, trees[i * 2 + 1]); o.scale.setScalar(.8 + ((i * 37) % 5) / 10); o.updateMatrix();
         tr.setMatrixAt(i, o.matrix); cr.setMatrixAt(i, o.matrix);
@@ -273,7 +287,7 @@ export async function loadWorld(T, scene, colliders) {
     });
     if (parkTrees.length) {
       const tr = new T.InstancedMesh(trunkG, mat(0x765238), parkTrees.length);
-      const cr = new T.InstancedMesh(crownG, mat(0x397d37), parkTrees.length);
+      const cr = new T.InstancedMesh(crownG, windMat(0x397d37), parkTrees.length);
       const obj = new T.Object3D();
       parkTrees.forEach(([x, z, scale], i) => {
         obj.position.set(x, 0, z); obj.scale.setScalar(scale); obj.updateMatrix();
@@ -284,6 +298,10 @@ export async function loadWorld(T, scene, colliders) {
     }
     addInstances(grp, lampPoleG, 0x424b4d, lamps, true);
     addInstances(grp, lampHeadG, 0xe6d8a6, lamps.map(([x, y, z, a]) => [x + Math.sin(a) * .3, 5.45, z + Math.cos(a) * .3, a]), false);
+    for (const [x, y, z, a] of lamps) {
+      const hx = x + Math.sin(a) * .3, hz = z + Math.cos(a) * .3;
+      lampHeads.set(Math.round(hx) + ',' + Math.round(hz), [hx, 5.45, hz]);
+    }
     addInstances(grp, utilityPoleG, 0x6e5b45, utilityPoles, true);
     addInstances(grp, binG, 0x3e5550, bins, false);
     addInstances(grp, benchSeatG, 0x876b4e, benches, false);
@@ -367,5 +385,67 @@ export async function loadWorld(T, scene, colliders) {
     }
   }
 
-  return { spawn: d.spawn, goal: d.goal, roads, lim: { x: maxX + 40, z: maxZ + 40 }, update };
+  // Huellas de edificios para colocar comercios y puntos de interés sin invadirlos.
+  const insidePoly = (x, z, p) => {
+    let ins = false;
+    for (let i = 0, j = p.length - 2; i < p.length; j = i, i += 2) {
+      const xi = p[i], zi = p[i + 1], xj = p[j], zj = p[j + 1];
+      if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / ((zj - zi) || 1e-6) + xi) ins = !ins;
+    }
+    return ins;
+  };
+  const buildings = d.b.map(f => {
+    const p = f[2];
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (let i = 0; i < p.length; i += 2) {
+      x0 = Math.min(x0, p[i]); x1 = Math.max(x1, p[i]);
+      z0 = Math.min(z0, p[i + 1]); z1 = Math.max(z1, p[i + 1]);
+    }
+    return { poly: p, x0, x1, z0, z1, height: f[0] || 6.4 + (f[1] % 3) * 3.2 };
+  });
+  const freeAt = (x, z, pad = .6) => !buildings.some(b =>
+    x > b.x0 - pad && x < b.x1 + pad && z > b.z0 - pad && z < b.z1 + pad && insidePoly(x, z, b.poly));
+
+  // El punto de aparición del generador cae en el eje de la calle: lo movemos a la acera.
+  const nearestRoad = (x, z, minWidth = 5) => {
+    let best = null, bestD = Infinity;
+    for (const r of roads) {
+      if (r.width < minWidth) continue;
+      const p = r.points;
+      for (let i = 0; i + 3 < p.length; i += 2) {
+        const ax = p[i], az = p[i + 1], bx = p[i + 2], bz = p[i + 3];
+        const l2 = (bx - ax) ** 2 + (bz - az) ** 2;
+        let u = l2 ? ((x - ax) * (bx - ax) + (z - az) * (bz - az)) / l2 : 0;
+        u = Math.max(0, Math.min(1, u));
+        const px = ax + (bx - ax) * u, pz = az + (bz - az) * u;
+        const d2 = (x - px) ** 2 + (z - pz) ** 2;
+        if (d2 < bestD) { bestD = d2; best = { x: px, z: pz, width: r.width, dx: (bx - ax) / Math.sqrt(l2 || 1), dz: (bz - az) / Math.sqrt(l2 || 1) }; }
+      }
+    }
+    return best;
+  };
+  let spawn = d.spawn.slice();
+  const spawnRoad = nearestRoad(spawn[0], spawn[1]);
+  let moto = [spawn[0] + 2.2, spawn[1], 0];
+  if (spawnRoad) {
+    const nx = -spawnRoad.dz, nz = spawnRoad.dx;
+    let spawnSide = 1;
+    for (const [side, extra] of [[1, 2.3], [-1, 2.3], [1, 1.6], [-1, 1.6]]) {
+      const x = spawnRoad.x + nx * side * (spawnRoad.width / 2 + extra), z = spawnRoad.z + nz * side * (spawnRoad.width / 2 + extra);
+      if (freeAt(x, z, 1)) { spawn = [x, z]; spawnSide = side; break; }
+    }
+    // La moto se aparca en el contención, a un lado del jugador, no delante de la cámara.
+    for (const d of [-2.6, 2.6, -3.8, 3.8]) {
+      const x = spawn[0] + spawnRoad.dx * d - nx * spawnSide * 1.5;
+      const z = spawn[1] + spawnRoad.dz * d - nz * spawnSide * 1.5;
+      if (freeAt(x, z, .8)) { moto = [x, z, Math.atan2(spawnRoad.dx, spawnRoad.dz)]; break; }
+    }
+  }
+  // El objetivo debe ser alcanzable: si cae dentro de un edificio, se lleva a la vía más cercana.
+  let goal = d.goal.slice();
+  if (!freeAt(goal[0], goal[1], 0)) {
+    const g = nearestRoad(goal[0], goal[1]);
+    if (g) goal = [g.x, g.z];
+  }
+  return { spawn, goal, moto, roads, buildings, greens: d.g, lamps: () => [...lampHeads.values()], wind: windUniform, lim: { x: maxX + 40, z: maxZ + 40 }, update };
 }
