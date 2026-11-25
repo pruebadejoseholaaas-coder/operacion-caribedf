@@ -31,7 +31,8 @@ La versión 0.9.0 en desarrollo cierra tres frentes:
    - se añadió recuperación para vehículos detenidos demasiado tiempo;
    - se conserva la separación entre vehículos, semáforos y reciclaje de lejanos.
 3. **Vida cotidiana y espacio público** (`src/barrio.js`, `src/citizens.js`, `src/businesses.js`):
-   - Plaza Los Almendros junto al conjunto residencial, con bancos, árboles, farolas y letrero;
+   - Plaza Los Almendros reubicada en un solar urbano accesible, con bancos, árboles, farolas, kiosco y letrero;
+   - algunos habitantes usan la plaza como destino de ocio y se validaron visitas reales a bancos;
    - atención de comercios abiertos aunque el empleado NPC aún no haya llegado (el local tiene
      su puesto de atención; no se simula un cliente como si fuera empleado);
    - los habitantes que están dentro de su vivienda usan su dirección lógica para buscar
@@ -41,8 +42,8 @@ La versión 0.9.0 en desarrollo cierra tres frentes:
 
 ## Verificación ejecutada
 
-- `npm test`: **16 pruebas, 16 correctas, 0 fallos**.
-- `npm run build`: correcto, bundle principal ~814.24 kB JS (gzip ~232.66 kB).
+- `npm test`: **24 pruebas, 24 correctas, 0 fallos**.
+- `npm run build`: correcto, bundle principal ~822.42 kB JS (gzip ~235.68 kB).
 - Chromium headless con SwiftShader, sin errores de página:
   - el jugador toma una guagua y aparece en la siguiente parada de la misma línea;
   - la telemetría muestra líneas, paradas, pasajeros con destino y al menos una guagua por línea;
@@ -62,14 +63,14 @@ La versión 0.9.0 en desarrollo cierra tres frentes:
 - Los vehículos frenan y ceden ante peatones, pero no existe colisión física vehículo-peatón.
 - El descenso de pasajeros está implementado y probado en código/simulación, pero la prueba
   visual de un viaje completo de punta a punta queda pendiente.
-- La Plaza Los Almendros es explorable, pero los NPC no la usan todavía porque sus direcciones
-  de rutina están en la ciudad y la plaza está junto a las viviendas instanciadas. Se documenta
-  como espacio del jugador, no como IA vecinal completa.
+- La Plaza Los Almendros es explorable y ya recibe visitas de habitantes con casa cercana; la
+  frecuencia depende de la hora y del turno, y no todos los NPC la eligen. Queda ampliar sus
+  actividades (dominó, música, conversaciones sentadas).
 - No todos los edificios tienen interior; están cubiertos viviendas NPC, hospital, escuela,
   comercios y la casa del jugador.
 - La versión 0.9.0 es una entrega de trabajo; no se declara el juego terminado.
 
 ## Próxima tarea exacta
 
-Conectar la Plaza Los Almendros con las rutinas de los NPC (o trasladar el espacio público a
-una zona con viviendas de rutina), y validar en un Android físico el APK/rendimiento.
+Comparar el solar con las fotografías reales cuando estén disponibles, añadir más actividades
+a la plaza y validar en un Android físico el APK/rendimiento.

@@ -66,13 +66,13 @@ transporte integrado y optimización.
   cliente, venta real, stock, costo, reposición, ventas de ciudadanos y persistencia.
 - **Clientes NPC reales**: los habitantes entran al comercio, esperan en cola, compran,
   reciben un producto y salen; no son visitantes decorativos.
-- **Transporte público**: paradas con línea y próxima guagua, NPC que esperan y abordan,
-  viaje simulado y regreso a su rutina; el jugador puede tomar una guagua en una parada
-  y avanzar a la siguiente parada.
+- **Transporte público**: paradas con línea y próxima guagua, NPC que esperan, abordan una guagua
+  real de su línea, siguen su recorrido y bajan en la parada destino; el jugador puede tomar una
+  guagua en una parada y avanzar a la siguiente parada.
 - **Optimización**: actualización LOD de NPC por distancia, ocultado de NPC lejanos,
   actualización de tráfico por distancia, interiores ocultos fuera de vista.
-- **Pruebas**: `npm test` con 16 pruebas, incluidas simulación de NPC, compra, transporte,
-  rutas de guagua y reglas de peatón; workflow de GitHub Actions para PR.
+- **Pruebas**: `npm test` con 24 pruebas, incluidas simulación de NPC, compra, transporte,
+  rutas de guagua, línea incorrecta, ausencia de guagua, terreno y plaza; workflow de GitHub Actions para PR.
 
 ### Parcial o con límites conocidos
 
