@@ -138,7 +138,7 @@ separó la salida de clientes de la de empleados para no restar personal por err
 ### Verificación de este bloque
 
 - `npm run build`: correcto. Bundle principal 807.34 kB (gzip 230.18 kB).
-- `npm test` en aquel cierre: 9/9 pruebas correctas. En 0.9.0 la suite tiene 16 pruebas.
+- `npm test` en aquel cierre: 9/9 pruebas correctas. En el cierre 0.9.0 la suite tiene 24 pruebas.
 - Simulación de 3 horas en Chromium headless:
   - 109 ventas atribuidas a ciudadanos,
   - 7 comercios con ventas de ciudadanos,
